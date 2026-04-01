@@ -204,7 +204,7 @@ export default function ConfiguracoesPage() {
   }, [business]);
 
   function handleCopy() {
-    navigator.clipboard.writeText(`https://marqueja.app/${business?.slug}`).catch(() => {});
+    navigator.clipboard.writeText(`https://marqueja.conectalestesp.com.br/${business?.slug}`).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -293,7 +293,7 @@ export default function ConfiguracoesPage() {
             <FieldLabel>Seu link único</FieldLabel>
             <LinkRow>
               <LinkPreview>
-                <span>marqueja.app/</span>
+                <span>marqueja.conectalestesp.com.br/</span>
                 <LinkSlug>{business.slug}</LinkSlug>
               </LinkPreview>
               <CopyBtn $copied={copied} onClick={handleCopy} title="Copiar link">
