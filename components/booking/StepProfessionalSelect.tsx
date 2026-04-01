@@ -1,0 +1,216 @@
+"use client";
+
+import styled from "styled-components";
+import { ArrowLeft, UserFocus, Check } from "@phosphor-icons/react";
+import { Professional } from "@/types/database";
+
+interface Props {
+  professionals: Professional[];
+  serviceId: string;
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  onBack: () => void;
+}
+
+// ─── Styled Components ────────────────────────────────────────────────────────
+
+const Container = styled.div`
+  padding: 24px 20px 28px;
+`;
+
+const BackButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: 20px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+
+  &:hover {
+    color: var(--color-text);
+  }
+`;
+
+const Title = styled.h2`
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.4px;
+  margin-bottom: 4px;
+`;
+
+const Subtitle = styled.p`
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: 22px;
+`;
+
+const ProfessionalList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+`;
+
+const ProfCard = styled.button<{ $selected: boolean }>`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: ${({ $selected }) =>
+    $selected
+      ? "1.5px solid var(--color-primary)"
+      : "1px solid var(--color-border)"};
+  border-left: ${({ $selected }) =>
+    $selected ? "3px solid var(--color-primary)" : "1px solid var(--color-border)"};
+  background: ${({ $selected }) =>
+    $selected ? "rgba(249,115,22,0.08)" : "var(--color-surface-2)"};
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+
+  &:hover {
+    border-color: ${({ $selected }) =>
+      $selected ? "var(--color-primary)" : "#3a3a3a"};
+    border-left-color: ${({ $selected }) =>
+      $selected ? "var(--color-primary)" : "#3a3a3a"};
+  }
+`;
+
+const AvatarCircle = styled.div<{ $any?: boolean }>`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: ${({ $any }) =>
+    $any ? "rgba(249,115,22,0.12)" : "rgba(249,115,22,0.15)"};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+`;
+
+const ProfInfo = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+`;
+
+const ProfName = styled.span`
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.3;
+`;
+
+const ProfBio = styled.span`
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const CheckBadge = styled.div`
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+`;
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export default function StepProfessionalSelect({
+  professionals,
+  selectedId,
+  onSelect,
+  onBack,
+}: Props) {
+  const active = professionals.filter((p) => p.is_active);
+
+  const anySelected = selectedId === null;
+
+  return (
+    <Container>
+      <BackButton onClick={onBack} type="button">
+        <ArrowLeft size={16} />
+        Voltar
+      </BackButton>
+
+      <Title>Escolha o profissional</Title>
+      <Subtitle>Ou deixe que encontremos o melhor disponível para você</Subtitle>
+
+      <ProfessionalList>
+        {/* "No preference" card */}
+        <ProfCard
+          $selected={anySelected}
+          onClick={() => onSelect(null)}
+          type="button"
+        >
+          <AvatarCircle $any>
+            <UserFocus size={32} />
+          </AvatarCircle>
+          <ProfInfo>
+            <ProfName>Qualquer disponível</ProfName>
+            <ProfBio>Atribuímos o melhor profissional para você</ProfBio>
+          </ProfInfo>
+          {anySelected && (
+            <CheckBadge>
+              <Check size={18} weight="bold" />
+            </CheckBadge>
+          )}
+        </ProfCard>
+
+        {/* Individual professional cards */}
+        {active.map((prof) => {
+          const isSelected = selectedId === prof.id;
+          return (
+            <ProfCard
+              key={prof.id}
+              $selected={isSelected}
+              onClick={() => onSelect(prof.id)}
+              type="button"
+            >
+              <AvatarCircle>
+                {getInitials(prof.name)}
+              </AvatarCircle>
+              <ProfInfo>
+                <ProfName>{prof.name}</ProfName>
+                {prof.bio && <ProfBio>{prof.bio}</ProfBio>}
+              </ProfInfo>
+              {isSelected && (
+                <CheckBadge>
+                  <Check size={18} weight="bold" />
+                </CheckBadge>
+              )}
+            </ProfCard>
+          );
+        })}
+      </ProfessionalList>
+    </Container>
+  );
+}
