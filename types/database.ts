@@ -1,168 +1,719 @@
-// TypeScript interfaces mirroring the Supabase database schema
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
-export interface Business {
-  id: string;
-  owner_id: string;
-  slug: string;
-  name: string;
-  description: string | null;
-  logo_url: string | null;
-  primary_color: string;
-  address: BusinessAddress | null;
-  phone_whatsapp: string | null;
-  timezone: string;
-  booking_enabled: boolean;
-  slot_duration: number; // minutes
-  advance_booking_days: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface BusinessAddress {
-  street?: string;
-  number?: string;
-  complement?: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
-  zip_code?: string;
-  formatted?: string; // full formatted string
-}
-
-export interface BusinessHours {
-  id: string;
-  business_id: string;
-  day_of_week: number; // 0=Sunday, 6=Saturday
-  is_open: boolean;
-  open_time: string;  // "HH:MM:SS"
-  close_time: string; // "HH:MM:SS"
-}
-
-export interface Professional {
-  id: string;
-  business_id: string;
-  name: string;
-  avatar_url: string | null;
-  bio: string | null;
-  is_active: boolean;
-  created_at: string;
-}
-
-export interface Service {
-  id: string;
-  business_id: string;
-  name: string;
-  description: string | null;
-  duration_min: number;
-  price_cents: number;
-  is_active: boolean;
-  display_order: number;
-  created_at: string;
-}
-
-export interface ProfessionalService {
-  professional_id: string;
-  service_id: string;
-}
-
-export interface BlockedSlot {
-  id: string;
-  business_id: string;
-  professional_id: string | null; // null = blocked for all professionals
-  start_at: string; // ISO timestamp
-  end_at: string;   // ISO timestamp
-  reason: string | null;
-  created_at: string;
-}
-
-export type AppointmentStatus =
-  | "confirmed"
-  | "cancelled"
-  | "completed"
-  | "no_show"
-  | "pending";
-
-export interface Appointment {
-  id: string;
-  business_id: string;
-  service_id: string | null;
-  professional_id: string | null;
-  client_name: string;
-  client_phone: string;
-  start_at: string; // ISO timestamp
-  end_at: string;   // ISO timestamp
-  status: AppointmentStatus;
-  notes: string | null;
-  reminder_sent: boolean;
-  confirmation_sent: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-// Extended types with joined relations
-export interface AppointmentWithRelations extends Appointment {
-  service?: Service;
-  professional?: Professional;
-  business?: Business;
-}
-
-export interface ProfessionalWithServices extends Professional {
-  services?: Service[];
-}
-
-// Supabase Database generic type for createClient<Database>
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.4"
+  }
   public: {
     Tables: {
-      businesses: {
-        Row: Business;
-        Insert: Omit<Business, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<Business, "id" | "created_at">>;
-      };
-      business_hours: {
-        Row: BusinessHours;
-        Insert: Omit<BusinessHours, "id">;
-        Update: Partial<Omit<BusinessHours, "id">>;
-      };
-      professionals: {
-        Row: Professional;
-        Insert: Omit<Professional, "id" | "created_at">;
-        Update: Partial<Omit<Professional, "id" | "created_at">>;
-      };
-      services: {
-        Row: Service;
-        Insert: Omit<Service, "id" | "created_at">;
-        Update: Partial<Omit<Service, "id" | "created_at">>;
-      };
-      professional_services: {
-        Row: ProfessionalService;
-        Insert: ProfessionalService;
-        Update: Partial<ProfessionalService>;
-      };
-      blocked_slots: {
-        Row: BlockedSlot;
-        Insert: Omit<BlockedSlot, "id" | "created_at">;
-        Update: Partial<Omit<BlockedSlot, "id" | "created_at">>;
-      };
       appointments: {
-        Row: Appointment;
-        Insert: Omit<Appointment, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<Appointment, "id" | "created_at">>;
-      };
-    };
-    Views: Record<string, never>;
+        Row: {
+          business_id: string
+          client_name: string
+          client_phone: string
+          confirmation_sent: boolean | null
+          created_at: string | null
+          end_at: string
+          id: string
+          notes: string | null
+          professional_id: string | null
+          reminder_sent: boolean | null
+          service_id: string | null
+          start_at: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          business_id: string
+          client_name: string
+          client_phone: string
+          confirmation_sent?: boolean | null
+          created_at?: string | null
+          end_at: string
+          id?: string
+          notes?: string | null
+          professional_id?: string | null
+          reminder_sent?: boolean | null
+          service_id?: string | null
+          start_at: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          business_id?: string
+          client_name?: string
+          client_phone?: string
+          confirmation_sent?: boolean | null
+          created_at?: string | null
+          end_at?: string
+          id?: string
+          notes?: string | null
+          professional_id?: string | null
+          reminder_sent?: boolean | null
+          service_id?: string | null
+          start_at?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blocked_slots: {
+        Row: {
+          business_id: string
+          created_at: string | null
+          end_at: string
+          id: string
+          professional_id: string | null
+          reason: string | null
+          start_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string | null
+          end_at: string
+          id?: string
+          professional_id?: string | null
+          reason?: string | null
+          start_at: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string | null
+          end_at?: string
+          id?: string
+          professional_id?: string | null
+          reason?: string | null
+          start_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocked_slots_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocked_slots_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_hours: {
+        Row: {
+          business_id: string
+          close_time: string
+          day_of_week: number
+          id: string
+          is_open: boolean | null
+          open_time: string
+        }
+        Insert: {
+          business_id: string
+          close_time?: string
+          day_of_week: number
+          id?: string
+          is_open?: boolean | null
+          open_time?: string
+        }
+        Update: {
+          business_id?: string
+          close_time?: string
+          day_of_week?: number
+          id?: string
+          is_open?: boolean | null
+          open_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_hours_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      businesses: {
+        Row: {
+          address: Json | null
+          advance_booking_days: number | null
+          booking_enabled: boolean | null
+          created_at: string | null
+          description: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          owner_id: string | null
+          phone_whatsapp: string | null
+          primary_color: string | null
+          slot_duration: number | null
+          slug: string
+          timezone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: Json | null
+          advance_booking_days?: number | null
+          booking_enabled?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          owner_id?: string | null
+          phone_whatsapp?: string | null
+          primary_color?: string | null
+          slot_duration?: number | null
+          slug: string
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: Json | null
+          advance_booking_days?: number | null
+          booking_enabled?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          owner_id?: string | null
+          phone_whatsapp?: string | null
+          primary_color?: string | null
+          slot_duration?: number | null
+          slug?: string
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      client_products: {
+        Row: {
+          billing_day: number | null
+          cancelled_at: string | null
+          client_id: string
+          created_at: string | null
+          id: string
+          monthly_price_cents: number
+          product: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          billing_day?: number | null
+          cancelled_at?: string | null
+          client_id: string
+          created_at?: string | null
+          id?: string
+          monthly_price_cents?: number
+          product: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          billing_day?: number | null
+          cancelled_at?: string | null
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          monthly_price_cents?: number
+          product?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_products_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          business_id: string | null
+          created_at: string | null
+          id: string
+          name: string
+          neighborhood: string | null
+          notes: string | null
+          owner_email: string | null
+          owner_name: string | null
+          phone: string | null
+          segment: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          business_id?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          neighborhood?: string | null
+          notes?: string | null
+          owner_email?: string | null
+          owner_name?: string | null
+          phone?: string | null
+          segment?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          business_id?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          neighborhood?: string | null
+          notes?: string | null
+          owner_email?: string | null
+          owner_name?: string | null
+          phone?: string | null
+          segment?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hub_admins: {
+        Row: {
+          created_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          converted_to_client_id: string | null
+          created_at: string | null
+          id: string
+          last_contact_at: string | null
+          name: string
+          neighborhood: string | null
+          notes: string | null
+          phone: string | null
+          segment: string | null
+          source: string | null
+          status: string
+        }
+        Insert: {
+          converted_to_client_id?: string | null
+          created_at?: string | null
+          id?: string
+          last_contact_at?: string | null
+          name: string
+          neighborhood?: string | null
+          notes?: string | null
+          phone?: string | null
+          segment?: string | null
+          source?: string | null
+          status?: string
+        }
+        Update: {
+          converted_to_client_id?: string | null
+          created_at?: string | null
+          id?: string
+          last_contact_at?: string | null
+          name?: string
+          neighborhood?: string | null
+          notes?: string | null
+          phone?: string | null
+          segment?: string | null
+          source?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_converted_to_client_id_fkey"
+            columns: ["converted_to_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount_cents: number
+          client_id: string
+          created_at: string | null
+          due_date: string
+          id: string
+          notes: string | null
+          paid_at: string | null
+          payment_method: string | null
+          product_id: string | null
+          status: string
+        }
+        Insert: {
+          amount_cents: number
+          client_id: string
+          created_at?: string | null
+          due_date: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          product_id?: string | null
+          status?: string
+        }
+        Update: {
+          amount_cents?: number
+          client_id?: string
+          created_at?: string | null
+          due_date?: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          product_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "client_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_services: {
+        Row: {
+          professional_id: string
+          service_id: string
+        }
+        Insert: {
+          professional_id: string
+          service_id: string
+        }
+        Update: {
+          professional_id?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_services_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professionals: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          business_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          business_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          business_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professionals_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      services: {
+        Row: {
+          business_id: string
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          duration_min: number
+          id: string
+          is_active: boolean | null
+          name: string
+          price_cents: number
+        }
+        Insert: {
+          business_id: string
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          duration_min?: number
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price_cents?: number
+        }
+        Update: {
+          business_id?: string
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          duration_min?: number
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
     Functions: {
+      check_slot_conflict: {
+        Args: {
+          p_business_id: string
+          p_end_at: string
+          p_exclude_id?: string
+          p_professional_id: string
+          p_start_at: string
+        }
+        Returns: boolean
+      }
       get_booked_slots: {
         Args: {
-          p_business_id: string;
-          p_professional_id: string;
-          p_date: string;
-        };
-        Returns: Array<{ start_at: string; end_at: string }>;
-      };
-    };
+          p_business_id: string
+          p_date: string
+          p_professional_id: string
+        }
+        Returns: {
+          end_at: string
+          start_at: string
+        }[]
+      }
+      get_business_stats: {
+        Args: { p_business_id: string; p_date?: string }
+        Returns: {
+          appointments_month: number
+          appointments_today: number
+          appointments_week: number
+          attendance_rate: number
+        }[]
+      }
+      is_hub_admin: { Args: never; Returns: boolean }
+    }
     Enums: {
-      appointment_status: AppointmentStatus;
-    };
-  };
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

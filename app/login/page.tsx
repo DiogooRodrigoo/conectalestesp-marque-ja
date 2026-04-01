@@ -517,7 +517,7 @@ export default function LoginPage() {
       return;
     }
 
-    const { data: business } = await (supabase as any)
+    const { data: business } = await supabase
       .from("businesses")
       .select("slug")
       .eq("owner_id", authData.user.id)

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { notFound } from "next/navigation";
 import { createServerSupabaseClientWithServiceRole } from "@/lib/supabase/server";
 import CancelConfirm from "@/components/booking/CancelConfirm";
@@ -13,16 +12,16 @@ export default async function CancelPage({ params }: Props) {
   const { slug, appointmentId } = await params;
   const supabase = await createServerSupabaseClientWithServiceRole();
 
-  const { data: business } = await (supabase as any)
+  const { data: business } = await supabase
     .from("businesses")
     .select("id, name, primary_color, slug")
     .eq("slug", slug)
     .eq("booking_enabled", true)
-    .single() as { data: { id: string; name: string; primary_color: string; slug: string } | null };
+    .single();
 
   if (!business) notFound();
 
-  const { data: appointment } = await (supabase as any)
+  const { data: appointment } = await supabase
     .from("appointments")
     .select(`
       id,
@@ -34,16 +33,7 @@ export default async function CancelPage({ params }: Props) {
     `)
     .eq("id", appointmentId)
     .eq("business_id", business.id)
-    .single() as {
-      data: {
-        id: string;
-        status: string;
-        start_at: string;
-        client_name: string;
-        services: { name: string } | { name: string }[] | null;
-        professionals: { name: string } | { name: string }[] | null;
-      } | null;
-    };
+    .single();
 
   if (!appointment) notFound();
 
@@ -78,7 +68,7 @@ export default async function CancelPage({ params }: Props) {
         client_name: appointment.client_name,
       }}
       businessName={business.name}
-      businessColor={business.primary_color}
+      businessColor={business.primary_color ?? "#f97316"}
       businessSlug={business.slug}
       isPastDeadline={isPastDeadline}
     />

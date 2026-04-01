@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getAvailableSlots } from "@/lib/scheduling/slots";

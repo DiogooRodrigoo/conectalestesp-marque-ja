@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import BookingShell from "@/components/booking/BookingShell";
@@ -10,7 +9,7 @@ interface BookingPageProps {
 
 export default async function BookingPage({ params }: BookingPageProps) {
   const { slug } = await params;
-  const supabase = await createServerSupabaseClient() as any;
+  const supabase = await createServerSupabaseClient();
 
   const { data: business, error: bizError } = await supabase
     .from("businesses")
@@ -49,7 +48,7 @@ export default async function BookingPage({ params }: BookingPageProps) {
 
 export async function generateMetadata({ params }: BookingPageProps) {
   const { slug } = await params;
-  const supabase = await createServerSupabaseClient() as any;
+  const supabase = await createServerSupabaseClient();
 
   const { data: business } = await supabase
     .from("businesses")

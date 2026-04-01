@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClientWithServiceRole } from "@/lib/supabase/server";
 import { sendWhatsApp } from "@/lib/whatsapp/send";
