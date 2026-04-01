@@ -717,3 +717,24 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
+// ─── Type aliases (backwards compatibility) ───────────────────────────────────
+
+export type Business = Tables<"businesses">
+export type BusinessHours = Tables<"business_hours">
+export type Professional = Tables<"professionals">
+export type Service = Tables<"services">
+export type ProfessionalService = Tables<"professional_services">
+export type BlockedSlot = Tables<"blocked_slots">
+export type Appointment = Tables<"appointments">
+export type AppointmentStatus = "confirmed" | "cancelled" | "completed" | "no_show" | "pending"
+
+export interface AppointmentWithRelations extends Appointment {
+  service?: Service;
+  professional?: Professional;
+  business?: Business;
+}
+
+export interface ProfessionalWithServices extends Professional {
+  services?: Service[];
+}
