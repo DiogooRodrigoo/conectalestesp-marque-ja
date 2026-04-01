@@ -170,7 +170,7 @@ function emptyForm() {
 export default function BloqueiosPage() {
   const { business, loading: bizLoading } = useBusiness();
   const [blocks, setBlocks] = useState<BlockedSlot[]>([]);
-  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [professionals, setProfessionals] = useState<Pick<Professional, "id" | "name">[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
