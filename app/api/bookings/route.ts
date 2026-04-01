@@ -93,14 +93,14 @@ export async function POST(request: NextRequest) {
     const business = businessResult.data;
     const service = serviceResult.data;
 
-    if (!business.booking_enabled) {
+    if (!(business.booking_enabled ?? false)) {
       return NextResponse.json(
         { error: "Booking is currently disabled" },
         { status: 403 }
       );
     }
 
-    if (!service.is_active) {
+    if (!(service.is_active ?? true)) {
       return NextResponse.json(
         { error: "Service is not available" },
         { status: 400 }
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     }
 
     const startAt = new Date(`${body.date}T${body.time}:00`);
-    const endAt = new Date(startAt.getTime() + service.duration_min * 60 * 1000);
+    const endAt = new Date(startAt.getTime() + (service.duration_min ?? 30) * 60 * 1000);
 
     if (isNaN(startAt.getTime())) {
       return NextResponse.json(

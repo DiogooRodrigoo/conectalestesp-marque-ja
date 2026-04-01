@@ -313,9 +313,9 @@ export default function ConfiguracoesPage() {
           <Field>
             <FieldLabel>Cor principal</FieldLabel>
             <ColorDisplay>
-              <ColorCircle $color={business.primary_color} />
+              <ColorCircle $color={business.primary_color ?? "#f97316"} />
               <FieldValue style={{ fontFamily: "monospace", fontSize: 13 }}>
-                {business.primary_color}
+                {business.primary_color ?? "#f97316"}
               </FieldValue>
             </ColorDisplay>
           </Field>
@@ -334,7 +334,7 @@ export default function ConfiguracoesPage() {
               if (!h) return null;
               return (
                 <HourRow key={dayNum}>
-                  <DayLabel $open={h.is_open}>{DAY_LABELS[dayNum]}</DayLabel>
+                  <DayLabel $open={h.is_open ?? false}>{DAY_LABELS[dayNum]}</DayLabel>
                   <HourValue>
                     {h.is_open
                       ? `${h.open_time.slice(0, 5)} – ${h.close_time.slice(0, 5)}`

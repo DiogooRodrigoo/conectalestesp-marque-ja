@@ -56,10 +56,11 @@ export async function GET(request: NextRequest) {
     }
 
     const maxDate = new Date();
-    maxDate.setDate(maxDate.getDate() + business.advance_booking_days);
+    const advanceDays = business.advance_booking_days ?? 30;
+    maxDate.setDate(maxDate.getDate() + advanceDays);
     if (requestedDate > maxDate) {
       return NextResponse.json(
-        { error: `Cannot book more than ${business.advance_booking_days} days in advance` },
+        { error: `Cannot book more than ${advanceDays} days in advance` },
         { status: 400 }
       );
     }
@@ -120,7 +121,7 @@ export async function GET(request: NextRequest) {
       date,
       businessHours: businessHours.map((h) => ({
         day_of_week: h.day_of_week,
-        is_open: h.is_open,
+        is_open: h.is_open ?? false,
         open_time: h.open_time,
         close_time: h.close_time,
       })),
@@ -134,7 +135,7 @@ export async function GET(request: NextRequest) {
         end_at: b.end_at,
         professional_id: b.professional_id,
       })),
-      slotDuration: business.slot_duration,
+      slotDuration: business.slot_duration ?? 30,
       professionalId: professional_id ?? undefined,
     });
 
@@ -142,7 +143,7 @@ export async function GET(request: NextRequest) {
       date,
       business_id,
       professional_id: professional_id ?? null,
-      slot_duration: business.slot_duration,
+      slot_duration: business.slot_duration ?? 30,
       slots,
     });
   } catch (err) {

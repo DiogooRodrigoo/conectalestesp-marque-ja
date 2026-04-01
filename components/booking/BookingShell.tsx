@@ -203,7 +203,7 @@ export default function BookingShell({ business, services, professionals }: Book
     return (
       <Wrapper>
         <Header>
-          <LogoBox $color={business.primary_color}>
+          <LogoBox $color={business.primary_color ?? "#f97316"}>
             {business.logo_url ? (
               <LogoImg src={business.logo_url} alt={business.name} />
             ) : (
@@ -225,7 +225,7 @@ export default function BookingShell({ business, services, professionals }: Book
   return (
     <Wrapper>
       <Header>
-        <LogoBox $color={business.primary_color}>
+        <LogoBox $color={business.primary_color ?? "#f97316"}>
           {business.logo_url ? (
             <LogoImg src={business.logo_url} alt={business.name} />
           ) : (
@@ -300,7 +300,7 @@ export default function BookingShell({ business, services, professionals }: Book
                 businessId={business.id}
                 professionalId={booking.professionalId}
                 date={booking.date!}
-                slotDuration={business.slot_duration}
+                slotDuration={business.slot_duration ?? 30}
                 selectedTime={booking.time}
                 onSelect={(time) => {
                   setBooking((b) => ({ ...b, time }));
