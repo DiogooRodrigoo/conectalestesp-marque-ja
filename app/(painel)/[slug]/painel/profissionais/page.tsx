@@ -257,7 +257,7 @@ export default function ProfissionaisPage() {
                 </ProfMeta>
               </ProfInfo>
               <ProfActions>
-                <ToggleBtn $active={prof.is_active} onClick={() => toggleActive(prof)}>
+                <ToggleBtn $active={prof.is_active ?? false} onClick={() => toggleActive(prof)}>
                   {prof.is_active ? <ToggleRight size={20} weight="fill" /> : <ToggleLeft size={20} />}
                 </ToggleBtn>
                 <IconBtn onClick={() => openEdit(prof)}><PencilSimple size={15} /></IconBtn>

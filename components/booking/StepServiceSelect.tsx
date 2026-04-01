@@ -138,7 +138,7 @@ function formatDuration(minutes: number): string {
 export default function StepServiceSelect({ services, selectedId, onSelect }: Props) {
   const activeServices = services
     .filter((s) => s.is_active)
-    .sort((a, b) => a.display_order - b.display_order);
+    .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
 
   return (
     <Container>

@@ -300,7 +300,7 @@ export default function ServicosPage() {
               </ServiceMeta>
             </ServiceInfo>
             <ServiceActions>
-              <ToggleBtn $active={svc.is_active} onClick={() => toggleActive(svc)}>
+              <ToggleBtn $active={svc.is_active ?? false} onClick={() => toggleActive(svc)}>
                 {svc.is_active ? <ToggleRight size={20} weight="fill" /> : <ToggleLeft size={20} />}
               </ToggleBtn>
               <IconBtn onClick={() => openEdit(svc)}><PencilSimple size={15} /></IconBtn>
