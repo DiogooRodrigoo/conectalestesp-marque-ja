@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Marque Já | Agendamento Online",
   description: "Plataforma de agendamento online para comércios locais",
+  icons: {
+    icon: "/conecta-logo.jpeg",
+  },
 };
 
 export default function RootLayout({
