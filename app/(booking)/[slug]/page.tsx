@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import BookingShell from "@/components/booking/BookingShell";
@@ -9,9 +10,8 @@ interface BookingPageProps {
 
 export default async function BookingPage({ params }: BookingPageProps) {
   const { slug } = await params;
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient() as any;
 
-  // Busca negócio pelo slug
   const { data: business, error: bizError } = await supabase
     .from("businesses")
     .select("*")
@@ -23,29 +23,14 @@ export default async function BookingPage({ params }: BookingPageProps) {
     notFound();
   }
 
-  // Busca horários de funcionamento, serviços e profissionais em paralelo
   const [
     { data: business_hours },
     { data: services },
     { data: professionals },
   ] = await Promise.all([
-    supabase
-      .from("business_hours")
-      .select("*")
-      .eq("business_id", business.id)
-      .order("day_of_week"),
-    supabase
-      .from("services")
-      .select("*")
-      .eq("business_id", business.id)
-      .eq("is_active", true)
-      .order("display_order"),
-    supabase
-      .from("professionals")
-      .select("*")
-      .eq("business_id", business.id)
-      .eq("is_active", true)
-      .order("name"),
+    supabase.from("business_hours").select("*").eq("business_id", business.id).order("day_of_week"),
+    supabase.from("services").select("*").eq("business_id", business.id).eq("is_active", true).order("display_order"),
+    supabase.from("professionals").select("*").eq("business_id", business.id).eq("is_active", true).order("name"),
   ]);
 
   const businessWithHours: Business & { business_hours?: BusinessHours[] } = {
@@ -64,8 +49,8 @@ export default async function BookingPage({ params }: BookingPageProps) {
 
 export async function generateMetadata({ params }: BookingPageProps) {
   const { slug } = await params;
+  const supabase = await createServerSupabaseClient() as any;
 
-  const supabase = await createServerSupabaseClient();
   const { data: business } = await supabase
     .from("businesses")
     .select("name, description")

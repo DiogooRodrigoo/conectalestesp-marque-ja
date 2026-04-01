@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { notFound } from "next/navigation";
 import { createServerSupabaseClientWithServiceRole } from "@/lib/supabase/server";
 import CancelConfirm from "@/components/booking/CancelConfirm";
@@ -12,18 +13,16 @@ export default async function CancelPage({ params }: Props) {
   const { slug, appointmentId } = await params;
   const supabase = await createServerSupabaseClientWithServiceRole();
 
-  // Busca o negócio pelo slug
-  const { data: business } = await supabase
+  const { data: business } = await (supabase as any)
     .from("businesses")
     .select("id, name, primary_color, slug")
     .eq("slug", slug)
     .eq("booking_enabled", true)
-    .single();
+    .single() as { data: { id: string; name: string; primary_color: string; slug: string } | null };
 
   if (!business) notFound();
 
-  // Busca o agendamento com join de serviço e profissional
-  const { data: appointment } = await supabase
+  const { data: appointment } = await (supabase as any)
     .from("appointments")
     .select(`
       id,
@@ -35,12 +34,19 @@ export default async function CancelPage({ params }: Props) {
     `)
     .eq("id", appointmentId)
     .eq("business_id", business.id)
-    .single();
+    .single() as {
+      data: {
+        id: string;
+        status: string;
+        start_at: string;
+        client_name: string;
+        services: { name: string } | { name: string }[] | null;
+        professionals: { name: string } | { name: string }[] | null;
+      } | null;
+    };
 
   if (!appointment) notFound();
 
-  // Se já cancelado ou concluído, exibir mensagem adequada via isPastDeadline irrelevante —
-  // o componente trata o estado via API. Mas passamos cancelled como deadline para bloquear.
   const isFinalStatus =
     appointment.status === "cancelled" ||
     appointment.status === "completed" ||

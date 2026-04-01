@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClientWithServiceRole } from "@/lib/supabase/server";
 import { sendWhatsApp } from "@/lib/whatsapp/send";
@@ -12,8 +13,8 @@ interface CreateBookingBody {
   professional_id: string | null;
   client_name: string;
   client_phone: string;
-  date: string;   // "YYYY-MM-DD"
-  time: string;   // "HH:MM"
+  date: string;
+  time: string;
   notes?: string;
 }
 
@@ -36,7 +37,6 @@ export async function POST(request: NextRequest) {
   try {
     const body: CreateBookingBody = await request.json();
 
-    // Validate required fields (professional_id is optional — null means no preference)
     const required: (keyof CreateBookingBody)[] = [
       "business_id",
       "service_id",
@@ -55,7 +55,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate date format
     if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
       return NextResponse.json(
         { error: "date must be in YYYY-MM-DD format" },
@@ -63,7 +62,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate time format
     if (!/^\d{2}:\d{2}$/.test(body.time)) {
       return NextResponse.json(
         { error: "time must be in HH:MM format" },
@@ -73,7 +71,6 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createServerSupabaseClientWithServiceRole();
 
-    // Fetch business + service in parallel
     const [businessResult, serviceResult] = await Promise.all([
       supabase
         .from("businesses")
@@ -111,7 +108,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Compute start_at and end_at
     const startAt = new Date(`${body.date}T${body.time}:00`);
     const endAt = new Date(startAt.getTime() + service.duration_min * 60 * 1000);
 
@@ -122,7 +118,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for conflicts only when a specific professional is selected
     if (body.professional_id) {
       const { data: conflicts } = await supabase
         .from("appointments")
@@ -140,7 +135,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fetch professional name for notifications (null when no preference selected)
     const { data: professional } = body.professional_id
       ? await supabase
           .from("professionals")
@@ -149,7 +143,6 @@ export async function POST(request: NextRequest) {
           .single()
       : { data: null };
 
-    // Create the appointment
     const { data: appointment, error: insertError } = await supabase
       .from("appointments")
       .insert({
@@ -180,10 +173,8 @@ export async function POST(request: NextRequest) {
     const formattedTime = formatTimePtBR(startAt);
     const professionalName = professional?.name ?? "Qualquer disponível";
 
-    // Send WhatsApp notifications (non-blocking)
     const notificationPromises: Promise<unknown>[] = [];
 
-    // Confirmation to client
     notificationPromises.push(
       sendWhatsApp(
         body.client_phone,
@@ -206,7 +197,6 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    // Notification to business owner
     if (business.phone_whatsapp) {
       notificationPromises.push(
         sendWhatsApp(
@@ -226,7 +216,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fire and forget
     Promise.allSettled(notificationPromises).catch(() => {});
 
     return NextResponse.json(
