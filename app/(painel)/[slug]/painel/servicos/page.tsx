@@ -25,6 +25,19 @@ function parsePriceCents(value: string): number {
   return Math.round(parseFloat(value.replace(",", ".")) * 100) || 0;
 }
 
+function formatPriceInput(value: string): string {
+  // Remove tudo que não é dígito
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+  const num = parseInt(digits, 10);
+  if (isNaN(num)) return "";
+  // Formata como moeda: inteiros + vírgula + 2 decimais
+  return (num / 100).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 // ─── Animations ───────────────────────────────────────────────────────────────
 
 const fadeUp = keyframes`
@@ -218,7 +231,7 @@ export default function ServicosPage() {
     setForm({
       name: svc.name,
       durationMin: String(svc.duration_min),
-      price: (svc.price_cents / 100).toFixed(2),
+      price: (svc.price_cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     });
     setModalOpen(true);
   }
@@ -330,8 +343,14 @@ export default function ServicosPage() {
           <FormRow>
             <Input label="Duração (min)" type="number" min={5} step={5} icon={<Clock size={15} />}
               value={form.durationMin} onChange={(e) => setForm((f) => ({ ...f, durationMin: e.target.value }))} fullWidth />
-            <Input label="Preço (R$)" placeholder="35.00" icon={<CurrencyDollar size={15} />}
-              value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} fullWidth />
+            <Input label="Preço (R$)" placeholder="0,00" icon={<CurrencyDollar size={15} />}
+              value={form.price}
+              onChange={(e) => {
+                const formatted = formatPriceInput(e.target.value);
+                setForm((f) => ({ ...f, price: formatted }));
+              }}
+              inputMode="numeric"
+              fullWidth />
           </FormRow>
         </FormGrid>
       </Modal>

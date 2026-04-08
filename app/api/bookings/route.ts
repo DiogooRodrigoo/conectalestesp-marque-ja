@@ -17,8 +17,12 @@ interface CreateBookingBody {
   notes?: string;
 }
 
+// Server runs in UTC; always format in São Paulo local time for notifications
+const SAO_PAULO_TZ = "America/Sao_Paulo";
+
 function formatDatePtBR(date: Date): string {
   return date.toLocaleDateString("pt-BR", {
+    timeZone: SAO_PAULO_TZ,
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -27,6 +31,7 @@ function formatDatePtBR(date: Date): string {
 
 function formatTimePtBR(date: Date): string {
   return date.toLocaleTimeString("pt-BR", {
+    timeZone: SAO_PAULO_TZ,
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -107,7 +112,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const startAt = new Date(`${body.date}T${body.time}:00`);
+    // Treat date+time as São Paulo local time (UTC-3, no DST since 2019)
+    const startAt = new Date(`${body.date}T${body.time}:00-03:00`);
     const endAt = new Date(startAt.getTime() + (service.duration_min ?? 30) * 60 * 1000);
 
     if (isNaN(startAt.getTime())) {

@@ -6,15 +6,16 @@ import styled, { keyframes, css } from "styled-components";
 import {
   CaretLeft, CaretRight, CalendarBlank, Clock,
   User, Scissors, Phone, CheckCircle, Plus, CalendarCheck,
-  ProhibitInset,
+  X, CurrencyDollar, Note,
 } from "@phosphor-icons/react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useBusiness } from "../BusinessContext";
-import type { AppointmentWithRelations } from "@/types/database";
+import type { AppointmentWithRelations, Service, Professional } from "@/types/database";
 import Badge from "@/components/ui/Badge";
 import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
+import Modal from "@/components/ui/Modal";
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,11 @@ function dayRange(date: Date) {
   const end = new Date(date);
   end.setHours(23, 59, 59, 999);
   return { start: start.toISOString(), end: end.toISOString() };
+}
+
+function toLocalDatetimeValue(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 type AptStatus = "confirmed" | "pending" | "completed" | "cancelled" | "no_show";
@@ -254,9 +260,14 @@ const AptCard = styled.div<{ $index: number; $status: string }>`
   gap: 16px;
   animation: ${fadeUp} 0.25s ease both;
   animation-delay: ${({ $index }) => $index * 0.04}s;
-  transition: border-color 0.15s, transform 0.15s;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
   opacity: ${({ $status }) => ($status === "cancelled" ? 0.55 : 1)};
-  &:hover { transform: translateX(2px); }
+  cursor: pointer;
+  &:hover {
+    transform: translateX(2px);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    border-color: var(--color-primary);
+  }
   @media (max-width: 600px) { grid-template-columns: 48px 1fr; }
 `;
 
@@ -392,7 +403,166 @@ const LoadingCenter = styled.div`
   padding: 80px;
 `;
 
+// ─── Detail Modal Styled ──────────────────────────────────────────────────────
+
+const DetailGrid = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+`;
+
+const DetailRow = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+
+  &:last-child { border-bottom: none; }
+`;
+
+const DetailIcon = styled.div`
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  margin-top: 1px;
+`;
+
+const DetailContent = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const DetailLabel = styled.p`
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 2px;
+`;
+
+const DetailValue = styled.p`
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+`;
+
+const DetailPriceValue = styled.p`
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.3px;
+`;
+
+// ─── New Appointment Form Styled ──────────────────────────────────────────────
+
+const FormGrid = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+`;
+
+const FormRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  @media (max-width: 480px) { grid-template-columns: 1fr; }
+`;
+
+const FieldGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+`;
+
+const FieldLabel = styled.label`
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+`;
+
+const FieldInput = styled.input`
+  height: 40px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 13.5px;
+  font-family: inherit;
+  padding: 0 12px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &::placeholder { color: var(--color-text-muted); opacity: 0.6; }
+
+  &:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
+  }
+`;
+
+const FieldSelect = styled.select`
+  height: 40px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 13.5px;
+  font-family: inherit;
+  padding: 0 12px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
+  }
+`;
+
+const FieldTextarea = styled.textarea`
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 13.5px;
+  font-family: inherit;
+  padding: 10px 12px;
+  outline: none;
+  resize: vertical;
+  min-height: 72px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &::placeholder { color: var(--color-text-muted); opacity: 0.6; }
+
+  &:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
+  }
+`;
+
 // ─── Component ────────────────────────────────────────────────────────────────
+
+function emptyNewApt(selectedDate: Date) {
+  const d = new Date(selectedDate);
+  d.setHours(9, 0, 0, 0);
+  return {
+    clientName: "",
+    clientPhone: "",
+    startAt: toLocalDatetimeValue(d),
+    serviceId: "",
+    professionalId: "",
+    status: "pending" as AptStatus,
+    notes: "",
+  };
+}
 
 export default function AgendaPage() {
   const { business, loading: bizLoading } = useBusiness();
@@ -405,6 +575,16 @@ export default function AgendaPage() {
   const [menuCoords, setMenuCoords] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
   const [weekBlocks, setWeekBlocks] = useState<Set<string>>(new Set());
   const [portalMounted, setPortalMounted] = useState(false);
+
+  // Detail modal
+  const [detailApt, setDetailApt] = useState<AppointmentWithRelations | null>(null);
+
+  // New appointment modal
+  const [newAptOpen, setNewAptOpen] = useState(false);
+  const [newAptForm, setNewAptForm] = useState(emptyNewApt(today));
+  const [saving, setSaving] = useState(false);
+  const [services, setServices] = useState<Service[]>([]);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
 
   useEffect(() => { setPortalMounted(true); }, []);
 
@@ -465,6 +645,19 @@ export default function AgendaPage() {
       });
   }, [business, weekOffset]);
 
+  // Load services & professionals for new appointment form
+  useEffect(() => {
+    if (!business) return;
+    const supabase = getSupabaseClient();
+    Promise.all([
+      supabase.from("services").select("*").eq("business_id", business.id).eq("is_active", true).order("display_order"),
+      supabase.from("professionals").select("*").eq("business_id", business.id).eq("is_active", true),
+    ]).then(([svcRes, profRes]) => {
+      setServices(svcRes.data ?? []);
+      setProfessionals(profRes.data ?? []);
+    });
+  }, [business]);
+
   function hasBlock(date: Date) {
     return weekBlocks.has(`${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`);
   }
@@ -480,6 +673,49 @@ export default function AgendaPage() {
     setStatusMenuId(null);
   }
 
+  function openNewApt() {
+    setNewAptForm(emptyNewApt(selectedDate));
+    setNewAptOpen(true);
+  }
+
+  async function handleSaveNewApt() {
+    if (!business || !newAptForm.clientName.trim() || !newAptForm.startAt) return;
+    setSaving(true);
+    const supabase = getSupabaseClient();
+
+    const startAt = new Date(newAptForm.startAt);
+    const selectedService = services.find((s) => s.id === newAptForm.serviceId);
+    const durationMin = selectedService?.duration_min ?? 30;
+    const endAt = new Date(startAt.getTime() + durationMin * 60_000);
+
+    const { data } = await supabase
+      .from("appointments")
+      .insert({
+        business_id: business.id,
+        client_name: newAptForm.clientName.trim(),
+        client_phone: newAptForm.clientPhone.trim(),
+        start_at: startAt.toISOString(),
+        end_at: endAt.toISOString(),
+        service_id: newAptForm.serviceId || null,
+        professional_id: newAptForm.professionalId || null,
+        status: newAptForm.status,
+        notes: newAptForm.notes.trim() || null,
+      })
+      .select("*, service:services(*), professional:professionals(*)")
+      .single();
+
+    if (data) {
+      const apt = data as AppointmentWithRelations;
+      if (isSameDay(new Date(apt.start_at), selectedDate)) {
+        setAppointments((prev) => [...prev, apt].sort(
+          (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
+        ));
+      }
+    }
+    setSaving(false);
+    setNewAptOpen(false);
+  }
+
   const confirmed  = appointments.filter((a) => a.status === "confirmed").length;
   const completed  = appointments.filter((a) => a.status === "completed").length;
   const pending    = appointments.filter((a) => a.status === "pending").length;
@@ -493,7 +729,7 @@ export default function AgendaPage() {
     <Page>
       <TopRow>
         <PageTitle>Agenda</PageTitle>
-        <Button icon={<Plus size={16} weight="bold" />} size="sm">
+        <Button icon={<Plus size={16} weight="bold" />} size="sm" onClick={openNewApt}>
           Novo Agendamento
         </Button>
       </TopRow>
@@ -565,7 +801,12 @@ export default function AgendaPage() {
             const durationMin = apt.service?.duration_min;
             const s = statusMap[apt.status as AptStatus] ?? statusMap.pending;
             return (
-              <AptCard key={apt.id} $index={i} $status={apt.status}>
+              <AptCard
+                key={apt.id}
+                $index={i}
+                $status={apt.status}
+                onClick={() => setDetailApt(apt)}
+              >
                 <TimeCol>
                   <TimeMain>{time}</TimeMain>
                   {durationMin && <TimeDuration>{durationMin}min</TimeDuration>}
@@ -629,6 +870,228 @@ export default function AgendaPage() {
         </StatusMenuEl>,
         document.body
       )}
+
+      {/* ─── Detail Modal ───────────────────────────────────────────────────── */}
+      {detailApt && (() => {
+        const apt = detailApt;
+        const startDate = new Date(apt.start_at);
+        const dateStr = startDate.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        const timeStr = startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+        const s = statusMap[apt.status as AptStatus] ?? statusMap.pending;
+        return (
+          <Modal
+            open={!!detailApt}
+            onClose={() => setDetailApt(null)}
+            title="Detalhes do Agendamento"
+            size="md"
+            footer={
+              <Button variant="ghost" onClick={() => setDetailApt(null)}>Fechar</Button>
+            }
+          >
+            <DetailGrid>
+              <DetailRow>
+                <DetailIcon><User size={16} weight="fill" /></DetailIcon>
+                <DetailContent>
+                  <DetailLabel>Cliente</DetailLabel>
+                  <DetailValue>{apt.client_name}</DetailValue>
+                </DetailContent>
+              </DetailRow>
+
+              {apt.client_phone && (
+                <DetailRow>
+                  <DetailIcon><Phone size={16} weight="fill" /></DetailIcon>
+                  <DetailContent>
+                    <DetailLabel>Telefone</DetailLabel>
+                    <DetailValue>{apt.client_phone}</DetailValue>
+                  </DetailContent>
+                </DetailRow>
+              )}
+
+              <DetailRow>
+                <DetailIcon><CalendarCheck size={16} weight="fill" /></DetailIcon>
+                <DetailContent>
+                  <DetailLabel>Data do agendamento</DetailLabel>
+                  <DetailValue style={{ textTransform: "capitalize" }}>{dateStr}</DetailValue>
+                </DetailContent>
+              </DetailRow>
+
+              <DetailRow>
+                <DetailIcon><Clock size={16} weight="fill" /></DetailIcon>
+                <DetailContent>
+                  <DetailLabel>Horário</DetailLabel>
+                  <DetailValue>
+                    {timeStr}
+                    {apt.service?.duration_min ? ` · ${apt.service.duration_min} min` : ""}
+                  </DetailValue>
+                </DetailContent>
+              </DetailRow>
+
+              {apt.service && (
+                <DetailRow>
+                  <DetailIcon><Scissors size={16} weight="fill" /></DetailIcon>
+                  <DetailContent>
+                    <DetailLabel>Serviço</DetailLabel>
+                    <DetailValue>{apt.service.name}</DetailValue>
+                  </DetailContent>
+                </DetailRow>
+              )}
+
+              {apt.professional && (
+                <DetailRow>
+                  <DetailIcon><User size={16} weight="fill" /></DetailIcon>
+                  <DetailContent>
+                    <DetailLabel>Profissional</DetailLabel>
+                    <DetailValue>{apt.professional.name}</DetailValue>
+                  </DetailContent>
+                </DetailRow>
+              )}
+
+              {apt.service && (
+                <DetailRow>
+                  <DetailIcon><CurrencyDollar size={16} weight="fill" /></DetailIcon>
+                  <DetailContent>
+                    <DetailLabel>Valor</DetailLabel>
+                    <DetailPriceValue>{formatCurrency(apt.service.price_cents)}</DetailPriceValue>
+                  </DetailContent>
+                </DetailRow>
+              )}
+
+              <DetailRow>
+                <DetailIcon>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "currentColor" }} />
+                </DetailIcon>
+                <DetailContent>
+                  <DetailLabel>Status</DetailLabel>
+                  <div style={{ marginTop: 4 }}>
+                    <Badge variant={s.variant} dot>{s.label}</Badge>
+                  </div>
+                </DetailContent>
+              </DetailRow>
+
+              {apt.notes && (
+                <DetailRow>
+                  <DetailIcon><Note size={16} weight="fill" /></DetailIcon>
+                  <DetailContent>
+                    <DetailLabel>Observações</DetailLabel>
+                    <DetailValue>{apt.notes}</DetailValue>
+                  </DetailContent>
+                </DetailRow>
+              )}
+
+              <DetailRow>
+                <DetailIcon><Clock size={14} /></DetailIcon>
+                <DetailContent>
+                  <DetailLabel>Agendado em</DetailLabel>
+                  <DetailValue>
+                    {apt.created_at
+                      ? new Date(apt.created_at).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })
+                      : "—"}
+                  </DetailValue>
+                </DetailContent>
+              </DetailRow>
+            </DetailGrid>
+          </Modal>
+        );
+      })()}
+
+      {/* ─── New Appointment Modal ──────────────────────────────────────────── */}
+      <Modal
+        open={newAptOpen}
+        onClose={() => setNewAptOpen(false)}
+        title="Novo Agendamento"
+        description="Preencha os dados para criar um agendamento manualmente."
+        size="md"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setNewAptOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={handleSaveNewApt}
+              loading={saving}
+              disabled={!newAptForm.clientName.trim() || !newAptForm.startAt}
+            >
+              Criar Agendamento
+            </Button>
+          </>
+        }
+      >
+        <FormGrid>
+          <FormRow>
+            <FieldGroup>
+              <FieldLabel>Nome do cliente *</FieldLabel>
+              <FieldInput
+                placeholder="Ex: João Silva"
+                value={newAptForm.clientName}
+                onChange={(e) => setNewAptForm((f) => ({ ...f, clientName: e.target.value }))}
+              />
+            </FieldGroup>
+            <FieldGroup>
+              <FieldLabel>Telefone</FieldLabel>
+              <FieldInput
+                placeholder="(11) 99999-9999"
+                value={newAptForm.clientPhone}
+                onChange={(e) => setNewAptForm((f) => ({ ...f, clientPhone: e.target.value }))}
+              />
+            </FieldGroup>
+          </FormRow>
+
+          <FieldGroup>
+            <FieldLabel>Data e horário *</FieldLabel>
+            <FieldInput
+              type="datetime-local"
+              value={newAptForm.startAt}
+              onChange={(e) => setNewAptForm((f) => ({ ...f, startAt: e.target.value }))}
+            />
+          </FieldGroup>
+
+          <FormRow>
+            <FieldGroup>
+              <FieldLabel>Serviço</FieldLabel>
+              <FieldSelect
+                value={newAptForm.serviceId}
+                onChange={(e) => setNewAptForm((f) => ({ ...f, serviceId: e.target.value }))}
+              >
+                <option value="">Selecionar serviço</option>
+                {services.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </FieldSelect>
+            </FieldGroup>
+            <FieldGroup>
+              <FieldLabel>Profissional</FieldLabel>
+              <FieldSelect
+                value={newAptForm.professionalId}
+                onChange={(e) => setNewAptForm((f) => ({ ...f, professionalId: e.target.value }))}
+              >
+                <option value="">Selecionar profissional</option>
+                {professionals.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </FieldSelect>
+            </FieldGroup>
+          </FormRow>
+
+          <FieldGroup>
+            <FieldLabel>Status inicial</FieldLabel>
+            <FieldSelect
+              value={newAptForm.status}
+              onChange={(e) => setNewAptForm((f) => ({ ...f, status: e.target.value as AptStatus }))}
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </FieldSelect>
+          </FieldGroup>
+
+          <FieldGroup>
+            <FieldLabel>Observações</FieldLabel>
+            <FieldTextarea
+              placeholder="Alguma informação adicional sobre o agendamento..."
+              value={newAptForm.notes}
+              onChange={(e) => setNewAptForm((f) => ({ ...f, notes: e.target.value }))}
+            />
+          </FieldGroup>
+        </FormGrid>
+      </Modal>
     </Page>
   );
 }

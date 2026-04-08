@@ -587,7 +587,7 @@ export default function LoginPage() {
                 />
                 Lembrar de mim
               </RememberLabel>
-              <ForgotLink href="#">Esqueci a senha</ForgotLink>
+              <ForgotLink href="/forgot-password">Esqueci a senha</ForgotLink>
             </OptionsRow>
 
             <SubmitButton type="submit" $loading={loading}>

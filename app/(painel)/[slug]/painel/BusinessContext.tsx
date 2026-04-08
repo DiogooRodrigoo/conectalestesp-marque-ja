@@ -33,7 +33,6 @@ export function BusinessProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Busca por owner_id garante que o usuário só acessa o próprio negócio.
-      // Valida também contra o slug da URL para evitar acesso cruzado.
       const { data } = await supabase
         .from("businesses")
         .select("*")
@@ -42,9 +41,19 @@ export function BusinessProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (!data) {
-        // Usuário autenticado mas não é dono deste slug — redireciona para login
         router.push("/login");
         return;
+      }
+
+      // Verifica se o cliente está ativo no Hub (status active ou trial).
+      // Usa API route interna com service_role para ler a tabela `clients`.
+      const accessRes = await fetch(`/api/access-check?business_id=${data.id}`);
+      if (accessRes.ok) {
+        const access = await accessRes.json();
+        if (!access.allowed) {
+          router.push("/acesso-bloqueado");
+          return;
+        }
       }
 
       setBusiness(data);

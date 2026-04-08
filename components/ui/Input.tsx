@@ -31,11 +31,15 @@ const InputWrapper = styled.div<{ $hasError: boolean; $hasIcon: boolean; $hasIco
   display: flex;
   align-items: center;
 
-  svg, .input-icon {
+  .input-icon {
     position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
     color: var(--color-text-muted);
     pointer-events: none;
-    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .input-icon-left {

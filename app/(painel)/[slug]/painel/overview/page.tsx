@@ -13,7 +13,12 @@ import {
   X,
   HandWaving,
   WhatsappLogo,
+  Phone,
+  CurrencyDollar,
+  Note,
 } from "@phosphor-icons/react";
+import Modal from "@/components/ui/Modal";
+import Badge from "@/components/ui/Badge";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useBusiness } from "../BusinessContext";
 import type { AppointmentWithRelations } from "@/types/database";
@@ -200,14 +205,77 @@ const AppointmentItem = styled.div<{ $index: number }>`
   gap: 16px;
   animation: ${fadeUp} 0.3s ease both;
   animation-delay: ${({ $index }) => 0.25 + $index * 0.05}s;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  cursor: pointer;
 
-  &:hover { border-color: #3a3a3a; }
+  &:hover {
+    border-color: var(--color-primary);
+    transform: translateX(2px);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
 
   @media (max-width: 640px) {
     flex-wrap: wrap;
     gap: 10px;
   }
+`;
+
+// ─── Detail Modal Styled ──────────────────────────────────────────────────────
+
+const DetailGrid = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+`;
+
+const DetailRow = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+
+  &:last-child { border-bottom: none; }
+`;
+
+const DetailIcon = styled.div`
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  margin-top: 1px;
+`;
+
+const DetailContent = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const DetailLabel = styled.p`
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 2px;
+`;
+
+const DetailValue = styled.p`
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+`;
+
+const DetailPriceValue = styled.p`
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.3px;
 `;
 
 const TimeBlock = styled.div`
@@ -369,12 +437,21 @@ const WelcomeClose = styled.button`
 
 const WELCOME_KEY = "mj_welcome_dismissed";
 
+const statusMap: Record<string, { label: string; variant: "success" | "orange" | "default" | "danger" | "warning" }> = {
+  confirmed: { label: "Confirmado", variant: "orange" },
+  pending:   { label: "Pendente",   variant: "default" },
+  completed: { label: "Pago",       variant: "success" },
+  cancelled: { label: "Cancelado",  variant: "danger" },
+  no_show:   { label: "Faltou",     variant: "warning" },
+};
+
 export default function OverviewPage() {
   const { business, loading: bizLoading } = useBusiness();
   const [todayApts, setTodayApts] = useState<AppointmentWithRelations[]>([]);
   const [counts, setCounts] = useState({ today: 0, week: 0, month: 0, attendance: 0 });
   const [loading, setLoading] = useState(true);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [detailApt, setDetailApt] = useState<AppointmentWithRelations | null>(null);
 
   useEffect(() => {
     if (!localStorage.getItem(WELCOME_KEY)) setShowWelcome(true);
@@ -520,7 +597,7 @@ export default function OverviewPage() {
               minute: "2-digit",
             });
             return (
-              <AppointmentItem key={apt.id} $index={i}>
+              <AppointmentItem key={apt.id} $index={i} onClick={() => setDetailApt(apt)}>
                 <TimeBlock>
                   <Clock size={14} />
                   <span>{time}</span>
@@ -540,6 +617,144 @@ export default function OverviewPage() {
           })}
         </AppointmentList>
       )}
+
+      {/* ─── Detail Modal ───────────────────────────────────────────────────── */}
+      {detailApt && (() => {
+        const apt = detailApt;
+        const startDate = new Date(apt.start_at);
+        const dateStr = startDate.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        const timeStr = startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+        const s = statusMap[apt.status] ?? statusMap.pending;
+        return (
+          <Modal
+            open={!!detailApt}
+            onClose={() => setDetailApt(null)}
+            title="Detalhes do Agendamento"
+            size="md"
+            footer={
+              <button
+                onClick={() => setDetailApt(null)}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: 13,
+                  color: "var(--color-text-muted)",
+                  border: "1px solid var(--color-border)",
+                  background: "transparent",
+                  cursor: "pointer",
+                }}
+              >
+                Fechar
+              </button>
+            }
+          >
+            <DetailGrid>
+              <DetailRow>
+                <DetailIcon><User size={16} weight="fill" /></DetailIcon>
+                <DetailContent>
+                  <DetailLabel>Cliente</DetailLabel>
+                  <DetailValue>{apt.client_name}</DetailValue>
+                </DetailContent>
+              </DetailRow>
+
+              {apt.client_phone && (
+                <DetailRow>
+                  <DetailIcon><Phone size={16} weight="fill" /></DetailIcon>
+                  <DetailContent>
+                    <DetailLabel>Telefone</DetailLabel>
+                    <DetailValue>{apt.client_phone}</DetailValue>
+                  </DetailContent>
+                </DetailRow>
+              )}
+
+              <DetailRow>
+                <DetailIcon><CalendarCheck size={16} weight="fill" /></DetailIcon>
+                <DetailContent>
+                  <DetailLabel>Data do agendamento</DetailLabel>
+                  <DetailValue style={{ textTransform: "capitalize" }}>{dateStr}</DetailValue>
+                </DetailContent>
+              </DetailRow>
+
+              <DetailRow>
+                <DetailIcon><Clock size={16} weight="fill" /></DetailIcon>
+                <DetailContent>
+                  <DetailLabel>Horário</DetailLabel>
+                  <DetailValue>
+                    {timeStr}
+                    {apt.service?.duration_min ? ` · ${apt.service.duration_min} min` : ""}
+                  </DetailValue>
+                </DetailContent>
+              </DetailRow>
+
+              {apt.service && (
+                <DetailRow>
+                  <DetailIcon><Scissors size={16} weight="fill" /></DetailIcon>
+                  <DetailContent>
+                    <DetailLabel>Serviço</DetailLabel>
+                    <DetailValue>{apt.service.name}</DetailValue>
+                  </DetailContent>
+                </DetailRow>
+              )}
+
+              {apt.professional && (
+                <DetailRow>
+                  <DetailIcon><User size={16} weight="fill" /></DetailIcon>
+                  <DetailContent>
+                    <DetailLabel>Profissional</DetailLabel>
+                    <DetailValue>{apt.professional.name}</DetailValue>
+                  </DetailContent>
+                </DetailRow>
+              )}
+
+              {apt.service && (
+                <DetailRow>
+                  <DetailIcon><CurrencyDollar size={16} weight="fill" /></DetailIcon>
+                  <DetailContent>
+                    <DetailLabel>Valor</DetailLabel>
+                    <DetailPriceValue>
+                      {(apt.service.price_cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </DetailPriceValue>
+                  </DetailContent>
+                </DetailRow>
+              )}
+
+              <DetailRow>
+                <DetailIcon>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "currentColor" }} />
+                </DetailIcon>
+                <DetailContent>
+                  <DetailLabel>Status</DetailLabel>
+                  <div style={{ marginTop: 4 }}>
+                    <Badge variant={s.variant} dot>{s.label}</Badge>
+                  </div>
+                </DetailContent>
+              </DetailRow>
+
+              {apt.notes && (
+                <DetailRow>
+                  <DetailIcon><Note size={16} weight="fill" /></DetailIcon>
+                  <DetailContent>
+                    <DetailLabel>Observações</DetailLabel>
+                    <DetailValue>{apt.notes}</DetailValue>
+                  </DetailContent>
+                </DetailRow>
+              )}
+
+              <DetailRow>
+                <DetailIcon><Clock size={14} /></DetailIcon>
+                <DetailContent>
+                  <DetailLabel>Agendado em</DetailLabel>
+                  <DetailValue>
+                    {apt.created_at
+                      ? new Date(apt.created_at).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })
+                      : "—"}
+                  </DetailValue>
+                </DetailContent>
+              </DetailRow>
+            </DetailGrid>
+          </Modal>
+        );
+      })()}
     </PageWrapper>
   );
 }

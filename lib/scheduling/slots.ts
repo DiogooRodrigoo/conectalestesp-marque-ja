@@ -1,4 +1,6 @@
 // Slot availability calculation engine
+// São Paulo is UTC-3 with no DST since 2019
+const BRAZIL_OFFSET_MIN = 3 * 60; // 180 minutes
 
 export interface BusinessHoursEntry {
   day_of_week: number; // 0=Sunday, 6=Saturday
@@ -46,27 +48,29 @@ function minutesToTime(minutes: number): string {
 }
 
 /**
- * Converts ISO timestamp to "HH:MM" in local time
+ * Converts ISO timestamp (UTC) to "HH:MM" in São Paulo local time (UTC-3)
  */
 function isoToLocalTime(isoString: string, date: string): string | null {
   const dt = new Date(isoString);
-  const targetDate = new Date(date + "T00:00:00");
 
-  // Check if same day (comparing year/month/day)
+  // Shift to Brazil local time to compare dates and get local hours
+  const localMs = dt.getTime() - BRAZIL_OFFSET_MIN * 60_000;
+  const localDt = new Date(localMs);
+  const targetDate = new Date(date + "T00:00:00Z");
+
   const sameDay =
-    dt.getFullYear() === targetDate.getFullYear() &&
-    dt.getMonth() === targetDate.getMonth() &&
-    dt.getDate() === targetDate.getDate();
+    localDt.getUTCFullYear() === targetDate.getUTCFullYear() &&
+    localDt.getUTCMonth() === targetDate.getUTCMonth() &&
+    localDt.getUTCDate() === targetDate.getUTCDate();
 
   if (!sameDay) return null;
 
-  const h = dt.getHours();
-  const m = dt.getMinutes();
-  return minutesToTime(h * 60 + m);
+  return minutesToTime(localDt.getUTCHours() * 60 + localDt.getUTCMinutes());
 }
 
 /**
- * Extracts minutes range [start, end] from ISO timestamps for a given date
+ * Extracts minutes range [start, end] from ISO timestamps for a given date,
+ * expressed in São Paulo local time (UTC-3) to match business hours strings.
  */
 function isoRangeToMinutes(
   start_at: string,
@@ -75,16 +79,24 @@ function isoRangeToMinutes(
 ): { start: number; end: number } | null {
   const startDt = new Date(start_at);
   const endDt = new Date(end_at);
-  const targetDate = new Date(date);
 
-  const startDay = startDt.toDateString();
-  const targetDay = targetDate.toDateString();
+  // Shift UTC timestamps to Brazil local time for date comparison and minutes
+  const startLocalMs = startDt.getTime() - BRAZIL_OFFSET_MIN * 60_000;
+  const startLocalDt = new Date(startLocalMs);
+  const targetDate = new Date(date + "T00:00:00Z");
 
-  if (startDay !== targetDay) return null;
+  const sameDay =
+    startLocalDt.getUTCFullYear() === targetDate.getUTCFullYear() &&
+    startLocalDt.getUTCMonth() === targetDate.getUTCMonth() &&
+    startLocalDt.getUTCDate() === targetDate.getUTCDate();
+
+  if (!sameDay) return null;
+
+  const endLocalDt = new Date(endDt.getTime() - BRAZIL_OFFSET_MIN * 60_000);
 
   return {
-    start: startDt.getHours() * 60 + startDt.getMinutes(),
-    end: endDt.getHours() * 60 + endDt.getMinutes(),
+    start: startLocalDt.getUTCHours() * 60 + startLocalDt.getUTCMinutes(),
+    end: endLocalDt.getUTCHours() * 60 + endLocalDt.getUTCMinutes(),
   };
 }
 
@@ -156,7 +168,10 @@ export function getAvailableSlots(params: GetAvailableSlotsParams): string[] {
     today.getMonth() === dateObj.getMonth() &&
     today.getDate() === dateObj.getDate();
 
-  const nowMinutes = isToday ? today.getHours() * 60 + today.getMinutes() : 0;
+  // Convert current UTC time to Brazil local minutes for comparison with slot times
+  const nowMinutes = isToday
+    ? today.getUTCHours() * 60 + today.getUTCMinutes() - BRAZIL_OFFSET_MIN
+    : 0;
 
   // Filter out unavailable slots
   const available = candidates.filter((slotStart) => {

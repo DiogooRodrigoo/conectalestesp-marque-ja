@@ -77,8 +77,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const dayStart = `${date}T00:00:00.000Z`;
-    const dayEnd = `${date}T23:59:59.999Z`;
+    // Use São Paulo timezone (UTC-3) boundaries so appointments near midnight
+    // are correctly included in the right day's query
+    const dayStart = `${date}T00:00:00-03:00`;
+    const dayEnd = `${date}T23:59:59.999-03:00`;
 
     let appointmentsQuery = supabase
       .from("appointments")
