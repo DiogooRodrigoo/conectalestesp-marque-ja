@@ -13,7 +13,7 @@ export async function PATCH(
     return NextResponse.json({ error: "ID do agendamento é obrigatório" }, { status: 400 });
   }
 
-  const supabase = await createServerSupabaseClientWithServiceRole();
+  const supabase = createServerSupabaseClientWithServiceRole();
 
   const { data: appointment, error } = await supabase
     .from("appointments")

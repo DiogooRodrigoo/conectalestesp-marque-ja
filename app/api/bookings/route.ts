@@ -8,13 +8,15 @@ import {
 
 interface CreateBookingBody {
   business_id: string;
-  service_id: string;
+  service_ids: string[];     // múltiplos serviços
   professional_id: string | null;
   client_name: string;
   client_phone: string;
   date: string;
   time: string;
   notes?: string;
+  verification_token: string;
+  force?: boolean;           // true = permite duplo agendamento no mesmo dia
 }
 
 // Server runs in UTC; always format in São Paulo local time for notifications
@@ -43,11 +45,12 @@ export async function POST(request: NextRequest) {
 
     const required: (keyof CreateBookingBody)[] = [
       "business_id",
-      "service_id",
+      "service_ids",
       "client_name",
       "client_phone",
       "date",
       "time",
+      "verification_token",
     ];
 
     for (const field of required) {
@@ -57,6 +60,13 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+    }
+
+    if (!Array.isArray(body.service_ids) || body.service_ids.length === 0) {
+      return NextResponse.json(
+        { error: "service_ids must be a non-empty array" },
+        { status: 400 }
+      );
     }
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
@@ -73,9 +83,87 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createServerSupabaseClientWithServiceRole();
+    const supabase = createServerSupabaseClientWithServiceRole();
 
-    const [businessResult, serviceResult] = await Promise.all([
+    // ── Valida token de verificação de telefone ───────────────────────────────
+    const cleanPhone = body.client_phone.replace(/\D/g, "");
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
+    const { data: verification } = await supabase
+      .from("phone_verifications")
+      .select("id, phone")
+      .eq("token", body.verification_token)
+      .eq("business_id", body.business_id)
+      .is("token_used_at", null)
+      .gte("verified_at", thirtyMinutesAgo)
+      .single();
+
+    if (!verification || verification.phone !== cleanPhone) {
+      return NextResponse.json(
+        { error: "Verificação de telefone inválida ou expirada. Reinicie o agendamento." },
+        { status: 401 }
+      );
+    }
+
+    // ── Verifica duplo agendamento no mesmo dia (antes de consumir token) ─────
+    if (!body.force) {
+      const dayStart = `${body.date}T00:00:00-03:00`;
+      const dayEnd = `${body.date}T23:59:59.999-03:00`;
+
+      const phoneVariants = [
+        cleanPhone,
+        `(${cleanPhone.slice(0, 2)}) ${cleanPhone.slice(2, 7)}-${cleanPhone.slice(7)}`,
+        `(${cleanPhone.slice(0, 2)}) ${cleanPhone.slice(2, 6)}-${cleanPhone.slice(6)}`,
+      ];
+
+      const { data: sameDayAppt } = await supabase
+        .from("appointments")
+        .select(`
+          id,
+          start_at,
+          services ( name )
+        `)
+        .eq("business_id", body.business_id)
+        .in("client_phone", phoneVariants)
+        .gte("start_at", dayStart)
+        .lte("start_at", dayEnd)
+        .in("status", ["confirmed", "pending"])
+        .limit(1)
+        .single();
+
+      if (sameDayAppt) {
+        const startDt = new Date(sameDayAppt.start_at);
+        const existingTime = startDt.toLocaleTimeString("pt-BR", {
+          timeZone: SAO_PAULO_TZ,
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        const serviceName =
+          (sameDayAppt.services as { name: string } | null)?.name ?? "Serviço";
+
+        return NextResponse.json(
+          {
+            error: "duplicate_day",
+            existing: {
+              id: sameDayAppt.id,
+              start_at: sameDayAppt.start_at,
+              time: existingTime,
+              service_name: serviceName,
+            },
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    // ── Consome o token ───────────────────────────────────────────────────────
+    await supabase
+      .from("phone_verifications")
+      .update({ token_used_at: new Date().toISOString() })
+      .eq("id", verification.id);
+
+    // ── Busca negócio e todos os serviços selecionados ────────────────────────
+    const [businessResult, servicesResult] = await Promise.all([
       supabase
         .from("businesses")
         .select("id, name, slot_duration, phone_whatsapp, booking_enabled")
@@ -83,20 +171,19 @@ export async function POST(request: NextRequest) {
         .single(),
       supabase
         .from("services")
-        .select("id, name, duration_min, is_active")
-        .eq("id", body.service_id)
-        .single(),
+        .select("id, name, duration_min, price_cents, is_active")
+        .in("id", body.service_ids),
     ]);
 
     if (businessResult.error || !businessResult.data) {
       return NextResponse.json({ error: "Business not found" }, { status: 404 });
     }
-    if (serviceResult.error || !serviceResult.data) {
-      return NextResponse.json({ error: "Service not found" }, { status: 404 });
+    if (servicesResult.error || !servicesResult.data || servicesResult.data.length === 0) {
+      return NextResponse.json({ error: "Services not found" }, { status: 404 });
     }
 
     const business = businessResult.data;
-    const service = serviceResult.data;
+    const services = servicesResult.data;
 
     if (!(business.booking_enabled ?? false)) {
       return NextResponse.json(
@@ -105,16 +192,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!(service.is_active ?? true)) {
-      return NextResponse.json(
-        { error: "Service is not available" },
-        { status: 400 }
-      );
+    for (const svc of services) {
+      if (!(svc.is_active ?? true)) {
+        return NextResponse.json(
+          { error: `Service "${svc.name}" is not available` },
+          { status: 400 }
+        );
+      }
     }
 
-    // Treat date+time as São Paulo local time (UTC-3, no DST since 2019)
+    // Duração total = soma de todos os serviços
+    const totalDuration = services.reduce((acc, s) => acc + (s.duration_min ?? 30), 0);
+
+    // Trata data+hora como horário local de SP (UTC-3)
     const startAt = new Date(`${body.date}T${body.time}:00-03:00`);
-    const endAt = new Date(startAt.getTime() + (service.duration_min ?? 30) * 60 * 1000);
+    const endAt = new Date(startAt.getTime() + totalDuration * 60 * 1000);
 
     if (isNaN(startAt.getTime())) {
       return NextResponse.json(
@@ -123,6 +215,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── Verifica conflito de horário com profissional ─────────────────────────
     if (body.professional_id) {
       const { data: conflicts } = await supabase
         .from("appointments")
@@ -148,14 +241,21 @@ export async function POST(request: NextRequest) {
           .single()
       : { data: null };
 
+    // Serviço primário = primeiro da lista (para o campo FK único da tabela)
+    const primaryService = services.find(s => s.id === body.service_ids[0]) ?? services[0];
+    const serviceNames = services.map((s) => s.name).join(" + ");
+
+    // Sempre salva telefone somente com dígitos
+    const normalizedClientPhone = cleanPhone;
+
     const { data: appointment, error: insertError } = await supabase
       .from("appointments")
       .insert({
         business_id: body.business_id,
-        service_id: body.service_id,
+        service_id: primaryService.id,
         professional_id: body.professional_id ?? null,
         client_name: body.client_name,
-        client_phone: body.client_phone,
+        client_phone: normalizedClientPhone,
         start_at: startAt.toISOString(),
         end_at: endAt.toISOString(),
         status: "confirmed",
@@ -182,11 +282,11 @@ export async function POST(request: NextRequest) {
 
     notificationPromises.push(
       sendWhatsApp(
-        body.client_phone,
+        normalizedClientPhone,
         confirmationMessage({
           clientName: body.client_name,
           businessName: business.name,
-          serviceName: service.name,
+          serviceName: serviceNames,
           professionalName,
           date: formattedDate,
           time: formattedTime,
@@ -211,7 +311,7 @@ export async function POST(request: NextRequest) {
             businessName: business.name,
             clientName: body.client_name,
             clientPhone: body.client_phone,
-            serviceName: service.name,
+            serviceName: serviceNames,
             professionalName,
             date: formattedDate,
             time: formattedTime,
@@ -232,7 +332,7 @@ export async function POST(request: NextRequest) {
           start_at: appointment.start_at,
           end_at: appointment.end_at,
           client_name: appointment.client_name,
-          service_name: service.name,
+          service_names: serviceNames,
           professional_name: professionalName,
         },
       },

@@ -2,13 +2,16 @@
 
 import { useState, useEffect } from "react";
 import styled, { keyframes } from "styled-components";
-import { ArrowLeft, CalendarBlank } from "@phosphor-icons/react";
+import { ArrowLeft, CalendarBlank, ForkKnife } from "@phosphor-icons/react";
 
 interface Props {
   businessId: string;
   professionalId: string | null;
   date: string;
   slotDuration: number;
+  serviceDuration: number;
+  lunchStart?: string | null;
+  lunchEnd?: string | null;
   selectedTime: string | null;
   onSelect: (time: string) => void;
   onBack: () => void;
@@ -107,6 +110,37 @@ const TimeChip = styled.button<{ $selected: boolean }>`
   }
 `;
 
+// ─── Card de almoço ───────────────────────────────────────────────────────────
+
+const LunchCard = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 12px 14px;
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-md);
+`;
+
+const LunchIcon = styled.div`
+  color: #F59E0B;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+`;
+
+const LunchText = styled.p`
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+
+  strong {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+`;
+
 const EmptyState = styled.div`
   text-align: center;
   padding: 36px 0;
@@ -165,6 +199,10 @@ export default function StepTimePicker({
   businessId,
   professionalId,
   date,
+  slotDuration,
+  serviceDuration,
+  lunchStart,
+  lunchEnd,
   selectedTime,
   onSelect,
   onBack,
@@ -179,6 +217,9 @@ export default function StepTimePicker({
 
     const params = new URLSearchParams({ business_id: businessId, date });
     if (professionalId) params.set("professional_id", professionalId);
+    if (serviceDuration && serviceDuration !== slotDuration) {
+      params.set("duration", serviceDuration.toString());
+    }
 
     fetch(`/api/slots?${params.toString()}`)
       .then((res) => {
@@ -190,7 +231,7 @@ export default function StepTimePicker({
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [businessId, professionalId, date]);
+  }, [businessId, professionalId, date, serviceDuration, slotDuration]);
 
   const formattedDate = new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR", {
     weekday: "long",
@@ -199,6 +240,9 @@ export default function StepTimePicker({
   });
 
   const { manha, tarde, noite } = groupSlotsByPeriod(slots);
+
+  // Verifica se tem configuração de almoço para mostrar o card
+  const hasLunchBreak = !!lunchStart && !!lunchEnd;
 
   return (
     <Container>
@@ -256,6 +300,18 @@ export default function StepTimePicker({
                 ))}
               </SlotsGrid>
             </>
+          )}
+
+          {hasLunchBreak && manha.length > 0 && tarde.length > 0 && (
+            <LunchCard>
+              <LunchIcon>
+                <ForkKnife size={18} weight="fill" />
+              </LunchIcon>
+              <LunchText>
+                <strong>Almoço</strong> — horários suspensos das{" "}
+                <strong>{lunchStart}</strong> às <strong>{lunchEnd}</strong>
+              </LunchText>
+            </LunchCard>
           )}
 
           {tarde.length > 0 && (

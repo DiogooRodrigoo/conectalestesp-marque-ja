@@ -10,7 +10,7 @@ const CANCEL_WINDOW_MINUTES = 30;
 
 export default async function CancelPage({ params }: Props) {
   const { slug, appointmentId } = await params;
-  const supabase = await createServerSupabaseClientWithServiceRole();
+  const supabase = createServerSupabaseClientWithServiceRole();
 
   const { data: business } = await supabase
     .from("businesses")

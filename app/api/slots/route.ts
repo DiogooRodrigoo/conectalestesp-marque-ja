@@ -8,6 +8,8 @@ export async function GET(request: NextRequest) {
     const business_id = searchParams.get("business_id");
     const professional_id = searchParams.get("professional_id");
     const date = searchParams.get("date");
+    const durationParam = searchParams.get("duration");
+    const requestedDuration = durationParam ? parseInt(durationParam, 10) : undefined;
 
     if (!business_id || !date) {
       return NextResponse.json(
@@ -37,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     const { data: business, error: businessError } = await supabase
       .from("businesses")
-      .select("slot_duration, booking_enabled, advance_booking_days")
+      .select("slot_duration, booking_enabled, advance_booking_days, lunch_start, lunch_end")
       .eq("id", business_id)
       .single();
 
@@ -138,7 +140,12 @@ export async function GET(request: NextRequest) {
         professional_id: b.professional_id,
       })),
       slotDuration: business.slot_duration ?? 30,
+      requestedDuration: requestedDuration && !isNaN(requestedDuration) ? requestedDuration : undefined,
       professionalId: professional_id ?? undefined,
+      lunchBreak:
+        business.lunch_start && business.lunch_end
+          ? { start: business.lunch_start, end: business.lunch_end }
+          : undefined,
     });
 
     return NextResponse.json({

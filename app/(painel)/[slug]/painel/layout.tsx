@@ -389,19 +389,32 @@ function SidebarBusinessCard() {
   );
 }
 
-function MobileHeader({ onSignOut }: { onSignOut: () => void }) {
+function SidebarLogoImg() {
   const { business } = useBusiness();
+  const src = business?.logo_url ?? "/conecta-logo.jpeg";
+  const alt = business?.name ?? "Marque Já";
+  return <LogoBadgeImg src={src} alt={alt} />;
+}
+
+function MobileHeader({ onSignOut, isDark, toggleTheme }: { onSignOut: () => void; isDark: boolean; toggleTheme: () => void }) {
+  const { business } = useBusiness();
+  const logoSrc = business?.logo_url ?? "/conecta-logo.jpeg";
   return (
     <MobileTopBar>
       <MobileTopLeft>
         <MobileLogoBadge>
-          <MobileLogoImg src="/conecta-logo.jpeg" alt="Conecta Leste SP" />
+          <MobileLogoImg src={logoSrc} alt={business?.name ?? "Marque Já"} />
         </MobileLogoBadge>
         <MobileBusinessName>{business?.name ?? "Marque Já"}</MobileBusinessName>
       </MobileTopLeft>
-      <MobileSignOut onClick={onSignOut} aria-label="Sair">
-        <SignOut size={18} />
-      </MobileSignOut>
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <MobileSignOut onClick={toggleTheme} aria-label={isDark ? "Modo claro" : "Modo escuro"}>
+          {isDark ? <Sun size={18} /> : <Moon size={18} />}
+        </MobileSignOut>
+        <MobileSignOut onClick={onSignOut} aria-label="Sair">
+          <SignOut size={18} />
+        </MobileSignOut>
+      </div>
     </MobileTopBar>
   );
 }
@@ -417,13 +430,13 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
 
   const { main: NAV_MAIN, system: NAV_SYSTEM } = buildNav(slug);
 
-  // Nav items para o mobile bottom bar (Bloqueios fica de fora por ser menos usado)
-  const MOBILE_NAV: NavItem[] = [
-    { label: "Início",   href: `/${slug}/painel/overview`,      icon: ChartBar },
-    { label: "Agenda",   href: `/${slug}/painel/agenda`,        icon: CalendarCheck },
-    { label: "Serviços", href: `/${slug}/painel/servicos`,      icon: Scissors },
-    { label: "Equipe",   href: `/${slug}/painel/profissionais`, icon: UsersFour },
-    { label: "Config",   href: `/${slug}/painel/configuracoes`, icon: GearSix },
+    const MOBILE_NAV: NavItem[] = [
+    { label: "Início",    href: `/${slug}/painel/overview`,      icon: ChartBar },
+    { label: "Agenda",    href: `/${slug}/painel/agenda`,        icon: CalendarCheck },
+    { label: "Serviços",  href: `/${slug}/painel/servicos`,      icon: Scissors },
+    { label: "Equipe",    href: `/${slug}/painel/profissionais`, icon: UsersFour },
+    { label: "Bloqueios", href: `/${slug}/painel/bloqueios`,     icon: ProhibitInset },
+    { label: "Config",    href: `/${slug}/painel/configuracoes`, icon: GearSix },
   ];
 
   async function handleSignOut() {
@@ -463,7 +476,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
         <Sidebar>
           <SidebarHeader>
             <LogoBadge>
-              <LogoBadgeImg src="/conecta-logo.jpeg" alt="Conecta Leste SP" />
+              <SidebarLogoImg />
             </LogoBadge>
             <LogoText>
               <LogoTitle>Marque Já</LogoTitle>
@@ -520,7 +533,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
         {/* ── Conteúdo principal ── */}
         <MainContent>
           {/* Header mobile (logo + nome do negócio + sair) */}
-          <MobileHeader onSignOut={handleSignOut} />
+          <MobileHeader onSignOut={handleSignOut} isDark={isDark} toggleTheme={toggleTheme} />
           {children}
         </MainContent>
 

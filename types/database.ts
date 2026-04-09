@@ -176,6 +176,8 @@ export type Database = {
           description: string | null
           id: string
           logo_url: string | null
+          lunch_end: string | null
+          lunch_start: string | null
           name: string
           owner_id: string | null
           phone_whatsapp: string | null
@@ -193,6 +195,8 @@ export type Database = {
           description?: string | null
           id?: string
           logo_url?: string | null
+          lunch_end?: string | null
+          lunch_start?: string | null
           name: string
           owner_id?: string | null
           phone_whatsapp?: string | null
@@ -210,6 +214,8 @@ export type Database = {
           description?: string | null
           id?: string
           logo_url?: string | null
+          lunch_end?: string | null
+          lunch_start?: string | null
           name?: string
           owner_id?: string | null
           phone_whatsapp?: string | null

@@ -21,13 +21,20 @@ export interface BlockedSlotEntry {
   professional_id: string | null; // null = blocked for all
 }
 
+export interface LunchBreak {
+  start: string; // "HH:MM"
+  end: string;   // "HH:MM"
+}
+
 export interface GetAvailableSlotsParams {
   date: string;             // "YYYY-MM-DD"
   businessHours: BusinessHoursEntry[];
   appointments: ExistingAppointment[];
   blockedSlots: BlockedSlotEntry[];
-  slotDuration: number;     // minutes
+  slotDuration: number;     // minutes — grid interval
+  requestedDuration?: number; // total service duration (may be > slotDuration for multi-service)
   professionalId?: string;  // optional filter by professional
+  lunchBreak?: LunchBreak;  // optional lunch break window (blocked for all)
 }
 
 /**
@@ -117,8 +124,16 @@ export function getAvailableSlots(params: GetAvailableSlotsParams): string[] {
     appointments,
     blockedSlots,
     slotDuration,
+    requestedDuration,
     professionalId,
+    lunchBreak,
   } = params;
+
+  // effectiveDuration: how many minutes the appointment will actually occupy.
+  // For multi-service bookings this is the sum of all service durations.
+  const effectiveDuration = requestedDuration && requestedDuration > slotDuration
+    ? requestedDuration
+    : slotDuration;
 
   const dateObj = new Date(date + "T12:00:00"); // noon to avoid DST edge cases
   const dayOfWeek = dateObj.getDay(); // 0=Sunday
@@ -133,9 +148,10 @@ export function getAvailableSlots(params: GetAvailableSlotsParams): string[] {
   const openMinutes = timeToMinutes(hoursEntry.open_time);
   const closeMinutes = timeToMinutes(hoursEntry.close_time);
 
-  // Generate all candidate slots
+  // Generate candidate slots at slotDuration intervals, but only up to
+  // closeMinutes - effectiveDuration so the full appointment fits inside hours.
   const candidates: number[] = [];
-  for (let t = openMinutes; t + slotDuration <= closeMinutes; t += slotDuration) {
+  for (let t = openMinutes; t + effectiveDuration <= closeMinutes; t += slotDuration) {
     candidates.push(t);
   }
 
@@ -159,7 +175,13 @@ export function getAvailableSlots(params: GetAvailableSlotsParams): string[] {
     .map((slot) => isoRangeToMinutes(slot.start_at, slot.end_at, date))
     .filter((r): r is { start: number; end: number } => r !== null);
 
-  const allBlockedRanges = [...appointmentRanges, ...blockedRanges];
+  // Add lunch break as a blocked range (applies to all professionals)
+  const lunchRange: { start: number; end: number }[] =
+    lunchBreak
+      ? [{ start: timeToMinutes(lunchBreak.start), end: timeToMinutes(lunchBreak.end) }]
+      : [];
+
+  const allBlockedRanges = [...appointmentRanges, ...blockedRanges, ...lunchRange];
 
   // Determine "now" in minutes if filtering for today
   const today = new Date();
@@ -175,7 +197,7 @@ export function getAvailableSlots(params: GetAvailableSlotsParams): string[] {
 
   // Filter out unavailable slots
   const available = candidates.filter((slotStart) => {
-    const slotEnd = slotStart + slotDuration;
+    const slotEnd = slotStart + effectiveDuration;
 
     // Skip past slots
     if (isToday && slotStart <= nowMinutes) {

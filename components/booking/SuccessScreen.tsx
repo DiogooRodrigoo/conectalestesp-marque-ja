@@ -17,6 +17,7 @@ import { CreatedAppointment } from "./BookingShell";
 interface Props {
   appointment: CreatedAppointment;
   business: Business;
+  onViewAppointments: () => void;
 }
 
 // ─── Styled Components ────────────────────────────────────────────────────────
@@ -159,6 +160,25 @@ const ActionsColumn = styled.div`
   animation: ${fadeUp} 0.4s 0.35s ease both;
 `;
 
+const WhatsAppConfirmBtn = styled.a`
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  background: #25d366;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover { opacity: 0.88; }
+`;
+
 const CalendarButton = styled.a`
   width: 100%;
   height: 48px;
@@ -254,14 +274,24 @@ function formatDateTime(isoString: string) {
   };
 }
 
+function buildWhatsAppUrl(appointment: CreatedAppointment, business: Business, date: string, time: string): string | null {
+  if (!business.phone_whatsapp) return null;
+  const phone = business.phone_whatsapp.replace(/\D/g, "");
+  const msg = encodeURIComponent(
+    `Olá, ${business.name}! Acabei de agendar *${appointment.services.map(s => s.name).join(" + ")}* para *${date} às ${time}*. Confirmo minha presença! 😊`
+  );
+  return `https://wa.me/55${phone}?text=${msg}`;
+}
+
 function buildGoogleCalendarUrl(appointment: CreatedAppointment, business: Business): string {
   const start = new Date(appointment.start_at);
-  const end = new Date(start.getTime() + appointment.service.duration_min * 60000);
+  const totalDuration = appointment.services.reduce((acc, s) => acc + s.duration_min, 0);
+  const end = new Date(start.getTime() + totalDuration * 60000);
   const fmt = (d: Date) =>
     d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
   return (
     `https://calendar.google.com/calendar/render?action=TEMPLATE` +
-    `&text=${encodeURIComponent(appointment.service.name + " - " + business.name)}` +
+    `&text=${encodeURIComponent(appointment.services.map(s => s.name).join(" + ") + " - " + business.name)}` +
     `&dates=${fmt(start)}/${fmt(end)}` +
     `&details=${encodeURIComponent("Agendamento via Marque Já")}` +
     `&location=${encodeURIComponent(
@@ -274,9 +304,10 @@ function buildGoogleCalendarUrl(appointment: CreatedAppointment, business: Busin
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function SuccessScreen({ appointment, business }: Props) {
+export default function SuccessScreen({ appointment, business, onViewAppointments }: Props) {
   const { date, time } = formatDateTime(appointment.start_at);
   const calendarUrl = buildGoogleCalendarUrl(appointment, business);
+  const whatsappUrl = buildWhatsAppUrl(appointment, business, date, time);
 
   return (
     <Container>
@@ -293,8 +324,12 @@ export default function SuccessScreen({ appointment, business }: Props) {
             <Scissors size={16} />
           </SummaryIcon>
           <SummaryContent>
-            <SummaryLabel>Serviço</SummaryLabel>
-            <SummaryValue>{appointment.service.name}</SummaryValue>
+            <SummaryLabel>
+              {appointment.services.length === 1 ? "Serviço" : `Serviços (${appointment.services.length})`}
+            </SummaryLabel>
+            <SummaryValue>
+              {appointment.services.map((s) => s.name).join(" + ")}
+            </SummaryValue>
           </SummaryContent>
         </SummaryItem>
 
@@ -354,9 +389,19 @@ export default function SuccessScreen({ appointment, business }: Props) {
       </CancelPolicyBox>
 
       <ActionsColumn>
+        {whatsappUrl && (
+          <WhatsAppConfirmBtn href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+            <WhatsappLogo size={18} weight="fill" />
+            Confirmar via WhatsApp
+          </WhatsAppConfirmBtn>
+        )}
         <CalendarButton href={calendarUrl} target="_blank" rel="noopener noreferrer">
           <CalendarPlus size={16} />
           Adicionar ao Calendário
+        </CalendarButton>
+        <CalendarButton as="button" onClick={onViewAppointments}>
+          <CalendarBlank size={16} />
+          Ver meus agendamentos
         </CalendarButton>
         <NewBookingLink type="button" onClick={() => window.location.reload()}>
           Novo agendamento

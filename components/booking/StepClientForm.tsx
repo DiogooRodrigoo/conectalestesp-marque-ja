@@ -7,6 +7,7 @@ import { ArrowLeft, WhatsappLogo } from "@phosphor-icons/react";
 interface Props {
   clientName: string;
   clientPhone: string;
+  businessId: string;
   onChange: (field: "clientName" | "clientPhone", value: string) => void;
   onNext: () => void;
   onBack: () => void;
@@ -153,6 +154,7 @@ function countDigits(v: string): number {
 export default function StepClientForm({
   clientName,
   clientPhone,
+  businessId,
   onChange,
   onNext,
   onBack,
@@ -179,7 +181,17 @@ export default function StepClientForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setTouched({ name: true, phone: true });
-    if (isValid) onNext();
+    if (!isValid) return;
+
+    // Dispara envio do código OTP em background antes de avançar
+    const cleanPhone = clientPhone.replace(/\D/g, "");
+    fetch("/api/verify/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: cleanPhone, business_id: businessId }),
+    }).catch(() => {/* tratado na tela de verificação */});
+
+    onNext();
   };
 
   return (

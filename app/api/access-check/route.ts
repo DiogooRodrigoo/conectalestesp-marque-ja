@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "business_id obrigatório" }, { status: 400 });
   }
 
-  const supabase = await createServerSupabaseClientWithServiceRole();
+  const supabase = createServerSupabaseClientWithServiceRole();
 
   const { data: client } = await supabase
     .from("clients")

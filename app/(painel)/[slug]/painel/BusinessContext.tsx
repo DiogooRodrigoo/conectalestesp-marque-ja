@@ -26,11 +26,13 @@ export function BusinessProvider({ children }: { children: React.ReactNode }) {
     async function load() {
       const supabase = getSupabaseClient();
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // getSession reads from local storage — persists across browser restarts without a network call
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         router.push("/login");
         return;
       }
+      const user = session.user;
 
       // Busca por owner_id garante que o usuário só acessa o próprio negócio.
       const { data } = await supabase

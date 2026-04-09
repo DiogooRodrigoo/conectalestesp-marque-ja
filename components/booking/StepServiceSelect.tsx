@@ -1,13 +1,14 @@
 "use client";
 
 import styled from "styled-components";
-import { CheckCircle, Clock } from "@phosphor-icons/react";
+import { CheckCircle, Clock, Plus, Minus } from "@phosphor-icons/react";
 import { Service } from "@/types/database";
 
 interface Props {
   services: Service[];
-  selectedId: string | null;
-  onSelect: (id: string) => void;
+  selectedIds: string[];
+  onSelect: (ids: string[]) => void;
+  onAdvance: () => void;
 }
 
 // ─── Styled Components ────────────────────────────────────────────────────────
@@ -34,6 +35,7 @@ const ServiceList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
+  margin-bottom: 20px;
 `;
 
 const ServiceCard = styled.button<{ $selected: boolean }>`
@@ -116,6 +118,73 @@ const Price = styled.span`
   white-space: nowrap;
 `;
 
+// ─── Footer de total ──────────────────────────────────────────────────────────
+
+const TotalFooter = styled.div`
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  background: var(--color-surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const TotalRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const TotalLabel = styled.span`
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+`;
+
+const TotalValue = styled.span`
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+`;
+
+const TotalPriceValue = styled.span`
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-primary);
+`;
+
+const AdvanceButton = styled.button<{ $disabled: boolean }>`
+  width: 100%;
+  height: 52px;
+  border-radius: 12px;
+  background: ${({ $disabled }) =>
+    $disabled ? "var(--color-border)" : "var(--color-primary)"};
+  color: ${({ $disabled }) => ($disabled ? "var(--color-text-muted)" : "#fff")};
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  cursor: ${({ $disabled }) => ($disabled ? "not-allowed" : "pointer")};
+  transition: opacity 0.2s, background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  &:hover {
+    opacity: ${({ $disabled }) => ($disabled ? 1 : 0.88)};
+  }
+`;
+
+const SelectedCountBadge = styled.span`
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 2px 8px;
+`;
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatPrice(cents: number): string {
@@ -135,31 +204,48 @@ function formatDuration(minutes: number): string {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function StepServiceSelect({ services, selectedId, onSelect }: Props) {
+export default function StepServiceSelect({ services, selectedIds, onSelect, onAdvance }: Props) {
   const activeServices = services
     .filter((s) => s.is_active)
     .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
 
+  const selectedServices = activeServices.filter((s) => selectedIds.includes(s.id));
+  const totalPrice = selectedServices.reduce((acc, s) => acc + s.price_cents, 0);
+  const totalDuration = selectedServices.reduce((acc, s) => acc + s.duration_min, 0);
+  const hasSelection = selectedIds.length > 0;
+
+  const toggleService = (id: string) => {
+    if (selectedIds.includes(id)) {
+      onSelect(selectedIds.filter((sid) => sid !== id));
+    } else {
+      onSelect([...selectedIds, id]);
+    }
+  };
+
   return (
     <Container>
       <Title>Escolha o serviço</Title>
-      <Subtitle>Selecione o que você gostaria de agendar</Subtitle>
+      <Subtitle>Selecione um ou mais serviços para agendar</Subtitle>
 
       <ServiceList>
         {activeServices.map((service) => {
-          const isSelected = service.id === selectedId;
+          const isSelected = selectedIds.includes(service.id);
           return (
             <ServiceCard
               key={service.id}
               $selected={isSelected}
-              onClick={() => onSelect(service.id)}
+              onClick={() => toggleService(service.id)}
               type="button"
             >
               <CardHeader>
                 <ServiceName>{service.name}</ServiceName>
-                {isSelected && (
+                {isSelected ? (
                   <CheckBadge>
                     <CheckCircle size={18} weight="fill" />
+                  </CheckBadge>
+                ) : (
+                  <CheckBadge style={{ color: "var(--color-text-muted)", opacity: 0.4 }}>
+                    <Plus size={18} weight="bold" />
                   </CheckBadge>
                 )}
               </CardHeader>
@@ -179,6 +265,37 @@ export default function StepServiceSelect({ services, selectedId, onSelect }: Pr
           );
         })}
       </ServiceList>
+
+      {hasSelection && (
+        <TotalFooter>
+          <TotalRow>
+            <TotalLabel>Duração total</TotalLabel>
+            <TotalValue>{formatDuration(totalDuration)}</TotalValue>
+          </TotalRow>
+          <TotalRow>
+            <TotalLabel>Total</TotalLabel>
+            <TotalPriceValue>{formatPrice(totalPrice)}</TotalPriceValue>
+          </TotalRow>
+        </TotalFooter>
+      )}
+
+      <AdvanceButton
+        type="button"
+        $disabled={!hasSelection}
+        disabled={!hasSelection}
+        onClick={hasSelection ? onAdvance : undefined}
+      >
+        {hasSelection ? (
+          <>
+            Avançar
+            <SelectedCountBadge>
+              {selectedIds.length} {selectedIds.length === 1 ? "serviço" : "serviços"}
+            </SelectedCountBadge>
+          </>
+        ) : (
+          "Selecione ao menos um serviço"
+        )}
+      </AdvanceButton>
     </Container>
   );
 }

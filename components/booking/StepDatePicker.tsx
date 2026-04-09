@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styled from "styled-components";
 import { ArrowLeft, CaretLeft, CaretRight } from "@phosphor-icons/react";
 import { Business, BusinessHours } from "@/types/database";
@@ -175,6 +175,14 @@ export default function StepDatePicker({ business, selectedDate, onSelect, onBac
 
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [blockedDates, setBlockedDates] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetch(`/api/blocked-dates?business_id=${business.id}&year=${viewYear}&month=${viewMonth + 1}`)
+      .then((r) => r.ok ? r.json() : { blocked_dates: [] })
+      .then((data) => setBlockedDates(new Set(data.blocked_dates ?? [])))
+      .catch(() => {});
+  }, [business.id, viewYear, viewMonth]);
 
   const maxDate = new Date(today);
   maxDate.setDate(today.getDate() + (business.advance_booking_days ?? 30));
@@ -268,7 +276,8 @@ export default function StepDatePicker({ business, selectedDate, onSelect, onBac
           const isPast = cellDate < today;
           const isTooFar = cellDate > maxDate;
           const isClosed = closedDays.has(cellDate.getDay());
-          const isDisabled = isPast || isTooFar || isClosed;
+          const isFullDayBlocked = blockedDates.has(ymd);
+          const isDisabled = isPast || isTooFar || isClosed || isFullDayBlocked;
 
           return (
             <DayCell

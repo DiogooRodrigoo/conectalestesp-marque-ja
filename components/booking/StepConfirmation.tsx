@@ -10,15 +10,25 @@ import {
   User,
   Phone,
   Spinner,
+  Warning,
+  CalendarX,
 } from "@phosphor-icons/react";
 import { Business, Service, Professional } from "@/types/database";
 import { BookingState, CreatedAppointment } from "./BookingShell";
 
+interface DuplicateInfo {
+  id: string;
+  start_at: string;
+  time: string;
+  service_name: string;
+}
+
 interface Props {
   booking: BookingState;
   business: Business;
-  service: Service;
+  services: Service[];
   professional: Professional | null;
+  verificationToken: string;
   onBack: () => void;
   onSuccess: (appointment: CreatedAppointment) => void;
 }
@@ -105,6 +115,26 @@ const RowValue = styled.span`
   font-weight: 500;
 `;
 
+const ServiceTag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin: 2px 4px 2px 0;
+`;
+
+const ServiceTagsRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 2px;
+`;
+
 const Divider = styled.div`
   height: 1px;
   background: var(--color-border);
@@ -147,6 +177,116 @@ const ErrorBanner = styled.div`
   font-size: 13px;
   color: var(--color-danger);
   margin-bottom: 14px;
+`;
+
+// ─── Duplicate Warning ────────────────────────────────────────────────────────
+
+const DuplicateCard = styled.div`
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+`;
+
+const DuplicateHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+`;
+
+const DuplicateTitle = styled.p`
+  font-size: 14px;
+  font-weight: 700;
+  color: #92400e;
+`;
+
+const DuplicateInfo = styled.p`
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+  line-height: 1.45;
+`;
+
+const ObservationLabel = styled.label`
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+`;
+
+const ObservationTextarea = styled.textarea`
+  width: 100%;
+  min-height: 72px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-primary);
+  }
+
+  &::placeholder {
+    color: var(--color-text-muted);
+    opacity: 0.6;
+  }
+`;
+
+const DuplicateActions = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+`;
+
+const CancelDuplicateBtn = styled.button`
+  flex: 1;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s;
+
+  &:hover {
+    border-color: var(--color-text-muted);
+  }
+`;
+
+const ConfirmAnywayBtn = styled.button<{ $loading: boolean }>`
+  flex: 1.5;
+  height: 44px;
+  border-radius: 10px;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  border: none;
+  cursor: ${({ $loading }) => ($loading ? "not-allowed" : "pointer")};
+  opacity: ${({ $loading }) => ($loading ? 0.7 : 1)};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: ${({ $loading }) => ($loading ? 0.7 : 0.88)};
+  }
 `;
 
 const ConfirmButton = styled.button<{ $loading: boolean }>`
@@ -200,15 +340,21 @@ function formatDuration(minutes: number): string {
 export default function StepConfirmation({
   booking,
   business,
-  service,
+  services,
   professional,
+  verificationToken,
   onBack,
   onSuccess,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [duplicate, setDuplicate] = useState<DuplicateInfo | null>(null);
+  const [duplicateNote, setDuplicateNote] = useState("");
 
-  const handleConfirm = async () => {
+  const totalPrice = services.reduce((acc, s) => acc + s.price_cents, 0);
+  const totalDuration = services.reduce((acc, s) => acc + s.duration_min, 0);
+
+  const handleConfirm = async (force = false) => {
     setLoading(true);
     setError(null);
 
@@ -218,27 +364,34 @@ export default function StepConfirmation({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           business_id: business.id,
-          service_id: booking.serviceId,
+          service_ids: booking.serviceIds,
           professional_id: booking.professionalId,
           client_name: booking.clientName,
           client_phone: booking.clientPhone,
           date: booking.date,
           time: booking.time,
+          verification_token: verificationToken,
+          force,
+          notes: force && duplicateNote.trim() ? duplicateNote.trim() : undefined,
         }),
       });
 
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 409 && data.error === "duplicate_day") {
+        // Usuário já tem agendamento neste dia — mostra aviso
+        setDuplicate(data.existing as DuplicateInfo);
+        return;
+      }
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? "Erro ao confirmar agendamento");
       }
 
-      const data = await res.json();
-
-      // API returns { success: true, appointment: { id, start_at, ... } }
       onSuccess({
         id: data.appointment.id,
         start_at: data.appointment.start_at,
-        service,
+        services,
         professional: professional ?? null,
         business,
       });
@@ -260,14 +413,25 @@ export default function StepConfirmation({
       <Subtitle>Revise os detalhes</Subtitle>
 
       <SummaryCard>
+        {/* Serviços selecionados */}
         <SummaryRow>
           <RowIcon>
             <Scissors size={16} />
           </RowIcon>
           <RowContent>
-            <RowLabel>Serviço</RowLabel>
-            <RowValue>
-              {service.name} · {formatDuration(service.duration_min)}
+            <RowLabel>
+              {services.length === 1 ? "Serviço" : `Serviços (${services.length})`}
+            </RowLabel>
+            <ServiceTagsRow>
+              {services.map((s) => (
+                <ServiceTag key={s.id}>
+                  <Clock size={11} />
+                  {s.name}
+                </ServiceTag>
+              ))}
+            </ServiceTagsRow>
+            <RowValue style={{ fontSize: 12, marginTop: 4 }}>
+              Duração total: {formatDuration(totalDuration)}
             </RowValue>
           </RowContent>
         </SummaryRow>
@@ -320,32 +484,90 @@ export default function StepConfirmation({
 
         <PriceLine>
           <PriceLabel>Total</PriceLabel>
-          <PriceValue>{formatPrice(service.price_cents)}</PriceValue>
+          <PriceValue>{formatPrice(totalPrice)}</PriceValue>
         </PriceLine>
       </SummaryCard>
 
+      {/* ── Card de aviso: duplo agendamento no mesmo dia ── */}
+      {duplicate && (
+        <DuplicateCard>
+          <DuplicateHeader>
+            <Warning size={18} weight="fill" color="#f59e0b" />
+            <DuplicateTitle>Você já tem um agendamento neste dia</DuplicateTitle>
+          </DuplicateHeader>
+          <DuplicateInfo>
+            <CalendarX
+              size={13}
+              style={{ verticalAlign: "middle", marginRight: 4 }}
+              weight="bold"
+            />
+            <strong>{duplicate.service_name}</strong> às{" "}
+            <strong>{duplicate.time}</strong>. Deseja agendar mesmo assim?
+          </DuplicateInfo>
+
+          <ObservationLabel htmlFor="duplicate-note">
+            Motivo do segundo agendamento (opcional)
+          </ObservationLabel>
+          <ObservationTextarea
+            id="duplicate-note"
+            value={duplicateNote}
+            onChange={(e) => setDuplicateNote(e.target.value)}
+            placeholder="Ex: agendei para mim e para um familiar..."
+            maxLength={300}
+          />
+
+          <DuplicateActions>
+            <CancelDuplicateBtn
+              type="button"
+              onClick={() => {
+                setDuplicate(null);
+                setDuplicateNote("");
+              }}
+            >
+              Cancelar
+            </CancelDuplicateBtn>
+            <ConfirmAnywayBtn
+              type="button"
+              $loading={loading}
+              disabled={loading}
+              onClick={() => handleConfirm(true)}
+            >
+              {loading ? (
+                <SpinnerIcon>
+                  <Spinner size={16} />
+                </SpinnerIcon>
+              ) : (
+                "Confirmar mesmo assim"
+              )}
+            </ConfirmAnywayBtn>
+          </DuplicateActions>
+        </DuplicateCard>
+      )}
+
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
-      <ConfirmButton
-        type="button"
-        $loading={loading}
-        onClick={handleConfirm}
-        disabled={loading}
-      >
-        {loading ? (
-          <>
-            <SpinnerIcon>
-              <Spinner size={18} />
-            </SpinnerIcon>
-            Confirmando...
-          </>
-        ) : (
-          <>
-            <CalendarCheck size={18} weight="bold" />
-            Confirmar agendamento
-          </>
-        )}
-      </ConfirmButton>
+      {!duplicate && (
+        <ConfirmButton
+          type="button"
+          $loading={loading}
+          onClick={() => handleConfirm(false)}
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <SpinnerIcon>
+                <Spinner size={18} />
+              </SpinnerIcon>
+              Confirmando...
+            </>
+          ) : (
+            <>
+              <CalendarCheck size={18} weight="bold" />
+              Confirmar agendamento
+            </>
+          )}
+        </ConfirmButton>
+      )}
     </Container>
   );
 }

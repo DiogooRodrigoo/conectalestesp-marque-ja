@@ -52,31 +52,31 @@ async function sendViaEvolution(
     };
   }
 
-  const phone = normalizePhone(to);
+  // Evolution GO usa número no formato XXXXXXXXXXX@s.whatsapp.net (sem +55 duplicado)
+  const digits = to.replace(/\D/g, "");
+  // Se já tiver 55 no início (código do Brasil), usa como está; senão adiciona
+  const normalized = digits.startsWith("55") && digits.length >= 12 ? digits : `55${digits}`;
+  const phone = `${normalized}@s.whatsapp.net`;
 
   try {
-    const response = await fetch(
-      `${apiUrl}/message/sendText/${instance}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: apiKey,
-        },
-        body: JSON.stringify({
-          number: phone,
-          text: message,
-          delay: 1000,
-        }),
-      }
-    );
+    const response = await fetch(`${apiUrl}/send/text`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: apiKey,
+      },
+      body: JSON.stringify({
+        number: phone,
+        text: message,
+      }),
+    });
 
     if (!response.ok) {
       const body = await response.text();
       return {
         success: false,
         provider: "evolution",
-        error: `Evolution API error ${response.status}: ${body}`,
+        error: `Evolution GO error ${response.status}: ${body}`,
       };
     }
 
@@ -84,7 +84,7 @@ async function sendViaEvolution(
     return {
       success: true,
       provider: "evolution",
-      messageId: data?.key?.id,
+      messageId: data?.id,
     };
   } catch (err) {
     return {

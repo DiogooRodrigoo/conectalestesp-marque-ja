@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import {
   Buildings, Phone, MapPin, Link as LinkIcon,
-  Copy, Check, Clock, PaintBucket, WhatsappLogo, Info,
+  Copy, Check, Clock, PaintBucket, WhatsappLogo, Info, ForkKnife,
 } from "@phosphor-icons/react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useBusiness } from "../BusinessContext";
@@ -347,6 +347,23 @@ export default function ConfiguracoesPage() {
           </HoursGrid>
         </SectionBody>
       </Section>
+
+      {(business.lunch_start && business.lunch_end) && (
+        <Section $delay={0.2}>
+          <SectionHeader>
+            <SectionIcon><ForkKnife size={16} weight="fill" /></SectionIcon>
+            <SectionTitle>Horário de Almoço</SectionTitle>
+          </SectionHeader>
+          <SectionBody>
+            <Field>
+              <FieldLabel>Intervalo bloqueado automaticamente</FieldLabel>
+              <FieldValue>
+                {business.lunch_start.slice(0, 5)} – {business.lunch_end.slice(0, 5)}
+              </FieldValue>
+            </Field>
+          </SectionBody>
+        </Section>
+      )}
     </Page>
   );
 }
