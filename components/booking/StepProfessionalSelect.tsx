@@ -1,7 +1,6 @@
 "use client";
 
 import styled from "styled-components";
-import { ArrowLeft, UserFocus, Check } from "@phosphor-icons/react";
 import { Professional } from "@/types/database";
 
 interface Props {
@@ -19,10 +18,11 @@ const Container = styled.div`
 `;
 
 const BackButton = styled.button`
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
+  font-weight: 600;
   color: var(--color-text-muted);
   margin-bottom: 20px;
   padding: 0;
@@ -31,14 +31,12 @@ const BackButton = styled.button`
   cursor: pointer;
   transition: color 0.2s;
 
-  &:hover {
-    color: var(--color-text);
-  }
+  &:hover { color: var(--color-text); }
 `;
 
 const Title = styled.h2`
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--color-text);
   letter-spacing: -0.4px;
   margin-bottom: 4px;
@@ -65,22 +63,34 @@ const ProfCard = styled.button<{ $selected: boolean }>`
   border-radius: var(--radius-md);
   border: ${({ $selected }) =>
     $selected
-      ? "1.5px solid var(--color-primary)"
+      ? "1.5px solid rgba(249,115,22,0.28)"
       : "1px solid var(--color-border)"};
-  border-left: ${({ $selected }) =>
-    $selected ? "3px solid var(--color-primary)" : "1px solid var(--color-border)"};
   background: ${({ $selected }) =>
-    $selected ? "rgba(249,115,22,0.08)" : "var(--color-surface-2)"};
+    $selected ? "var(--color-primary-subtle)" : "var(--color-surface-2)"};
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.2s, background 0.2s, transform 0.12s;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: ${({ $selected }) => ($selected ? "var(--gradient-primary)" : "var(--color-border)")};
+    border-radius: 4px 0 0 4px;
+    transition: background 0.18s ease;
+  }
 
   &:hover {
     border-color: ${({ $selected }) =>
-      $selected ? "var(--color-primary)" : "#3a3a3a"};
-    border-left-color: ${({ $selected }) =>
-      $selected ? "var(--color-primary)" : "#3a3a3a"};
+      $selected ? "rgba(249,115,22,0.4)" : "#3a3a3a"};
+    transform: translateY(-1px);
   }
+  &:active { transform: translateY(0); }
 `;
 
 const AvatarCircle = styled.div<{ $any?: boolean }>`
@@ -94,7 +104,7 @@ const AvatarCircle = styled.div<{ $any?: boolean }>`
   justify-content: center;
   flex-shrink: 0;
   color: var(--color-primary);
-  font-size: 14px;
+  font-size: ${({ $any }) => ($any ? "18px" : "14px")};
   font-weight: 700;
   letter-spacing: 0;
 `;
@@ -128,6 +138,8 @@ const CheckBadge = styled.div`
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  font-size: 16px;
+  font-weight: 800;
 `;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -157,8 +169,7 @@ export default function StepProfessionalSelect({
   return (
     <Container>
       <BackButton onClick={onBack} type="button">
-        <ArrowLeft size={16} />
-        Voltar
+        ← Voltar
       </BackButton>
 
       <Title>Escolha o profissional</Title>
@@ -172,16 +183,14 @@ export default function StepProfessionalSelect({
           type="button"
         >
           <AvatarCircle $any>
-            <UserFocus size={32} />
+            👥
           </AvatarCircle>
           <ProfInfo>
             <ProfName>Qualquer disponível</ProfName>
             <ProfBio>Atribuímos o melhor profissional para você</ProfBio>
           </ProfInfo>
           {anySelected && (
-            <CheckBadge>
-              <Check size={18} weight="bold" />
-            </CheckBadge>
+            <CheckBadge>✓</CheckBadge>
           )}
         </ProfCard>
 
@@ -203,9 +212,7 @@ export default function StepProfessionalSelect({
                 {prof.bio && <ProfBio>{prof.bio}</ProfBio>}
               </ProfInfo>
               {isSelected && (
-                <CheckBadge>
-                  <Check size={18} weight="bold" />
-                </CheckBadge>
+                <CheckBadge>✓</CheckBadge>
               )}
             </ProfCard>
           );

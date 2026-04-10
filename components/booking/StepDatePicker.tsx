@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import styled from "styled-components";
-import { ArrowLeft, CaretLeft, CaretRight } from "@phosphor-icons/react";
 import { Business, BusinessHours } from "@/types/database";
 
 interface Props {
@@ -19,10 +18,11 @@ const Container = styled.div`
 `;
 
 const BackButton = styled.button`
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
+  font-weight: 600;
   color: var(--color-text-muted);
   margin-bottom: 20px;
   background: none;
@@ -30,14 +30,12 @@ const BackButton = styled.button`
   cursor: pointer;
   transition: color 0.2s;
   padding: 0;
-  &:hover {
-    color: var(--color-text);
-  }
+  &:hover { color: var(--color-text); }
 `;
 
 const Title = styled.h2`
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--color-text);
   margin-bottom: 4px;
   letter-spacing: -0.4px;
@@ -58,27 +56,29 @@ const CalendarHeader = styled.div`
 
 const MonthLabel = styled.span`
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--color-text);
   text-transform: capitalize;
   letter-spacing: -0.3px;
 `;
 
 const NavButton = styled.button`
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  border: none;
-  background: transparent;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface-2);
   color: var(--color-text-muted);
+  font-size: 14px;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.18s, color 0.18s;
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
 
   &:hover {
-    background: var(--color-surface-2);
+    border-color: var(--color-text-muted);
     color: var(--color-text);
   }
 
@@ -122,10 +122,12 @@ const DayCell = styled.button<{
   border: none;
   background: ${({ $selected, $today }) =>
     $selected
-      ? "var(--color-primary)"
+      ? "var(--gradient-primary)"
       : $today
       ? "rgba(249,115,22,0.12)"
       : "transparent"};
+  box-shadow: ${({ $selected }) =>
+    $selected ? "0 4px 12px var(--color-primary-glow)" : "none"};
   color: ${({ $selected, $disabled, $empty, $today }) =>
     $empty
       ? "transparent"
@@ -148,11 +150,13 @@ const DayCell = styled.button<{
   align-items: center;
   justify-content: center;
   justify-self: center;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s, transform 0.12s;
 
   &:hover {
     background: ${({ $selected, $disabled, $empty }) =>
       $selected || $disabled || $empty ? undefined : "var(--color-surface-2)"};
+    transform: ${({ $selected, $disabled, $empty }) =>
+      $selected || $disabled || $empty ? "none" : "scale(1.05)"};
   }
 `;
 
@@ -229,21 +233,16 @@ export default function StepDatePicker({ business, selectedDate, onSelect, onBac
   return (
     <Container>
       <BackButton onClick={onBack} type="button">
-        <ArrowLeft size={16} />
-        Voltar
+        ← Voltar
       </BackButton>
 
       <Title>Escolha a data</Title>
       <Subtitle>Selecione o dia que prefere ser atendido</Subtitle>
 
       <CalendarHeader>
-        <NavButton onClick={handlePrev} disabled={!canGoPrev} type="button">
-          <CaretLeft size={14} weight="bold" />
-        </NavButton>
+        <NavButton onClick={handlePrev} disabled={!canGoPrev} type="button">‹</NavButton>
         <MonthLabel>{monthLabel}</MonthLabel>
-        <NavButton onClick={handleNext} type="button">
-          <CaretRight size={14} weight="bold" />
-        </NavButton>
+        <NavButton onClick={handleNext} type="button">›</NavButton>
       </CalendarHeader>
 
       <WeekDays>

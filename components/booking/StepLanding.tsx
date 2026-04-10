@@ -1,11 +1,10 @@
 "use client";
 
 import styled, { keyframes } from "styled-components";
-import { CalendarPlus, ClockCounterClockwise } from "@phosphor-icons/react";
-import { Business } from "@/types/database";
+import { Business, BusinessHours } from "@/types/database";
 
 interface Props {
-  business: Business;
+  business: Business & { business_hours?: BusinessHours[] };
   onBook: () => void;
   onViewAppointments: () => void;
 }
@@ -18,119 +17,138 @@ const fadeUp = keyframes`
 `;
 
 const Container = styled.div`
-  padding: 32px 20px 28px;
+  padding: 20px 18px 28px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-`;
-
-const Greeting = styled.p`
-  font-size: 13px;
-  color: var(--color-text-muted);
-  margin-bottom: 6px;
-  animation: ${fadeUp} 0.3s ease both;
-`;
-
-const Title = styled.h2`
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--color-text);
-  letter-spacing: -0.4px;
-  margin-bottom: 28px;
-  line-height: 1.3;
-  animation: ${fadeUp} 0.3s 0.05s ease both;
 `;
 
 const ButtonsWrapper = styled.div`
-  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  animation: ${fadeUp} 0.3s 0.1s ease both;
+  gap: 11px;
+  animation: ${fadeUp} 0.3s 0.05s ease both;
 `;
 
 const PrimaryButton = styled.button`
   width: 100%;
-  height: 56px;
-  border-radius: 14px;
-  background: var(--color-primary);
+  height: 64px;
+  border-radius: 18px;
+  background: var(--gradient-primary);
   color: #fff;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 800;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  transition: opacity 0.2s;
+  gap: 14px;
+  padding: 0 18px;
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: var(--shadow-btn);
+  position: relative;
+  overflow: hidden;
+  letter-spacing: -0.2px;
 
-  &:hover { opacity: 0.88; }
-  &:active { opacity: 0.75; }
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.13) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  &:hover { opacity: 0.92; transform: translateY(-1px); }
+  &:active { opacity: 0.88; transform: translateY(0); }
 `;
 
 const SecondaryButton = styled.button`
   width: 100%;
-  height: 52px;
-  border-radius: 14px;
-  background: var(--color-surface-2);
+  height: 58px;
+  border-radius: 18px;
+  background: var(--color-surface);
   border: 1.5px solid var(--color-border);
   color: var(--color-text);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  transition: border-color 0.2s, background 0.2s;
+  gap: 14px;
+  padding: 0 18px;
+  transition: border-color 0.2s, transform 0.15s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 
   &:hover {
     border-color: var(--color-text-muted);
+    transform: translateY(-1px);
   }
-  &:active { opacity: 0.75; }
+  &:active { transform: translateY(0); }
+`;
+
+const IconBox = styled.div`
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+  line-height: 1;
+`;
+
+const IconBoxMuted = styled(IconBox)`
+  background: var(--color-surface-2);
 `;
 
 const ButtonLabel = styled.div`
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 1px;
+  gap: 2px;
+  flex: 1;
 `;
 
 const ButtonTitle = styled.span`
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1;
 `;
 
 const ButtonSub = styled.span`
   font-size: 11px;
-  font-weight: 400;
-  opacity: 0.75;
+  font-weight: 500;
+  opacity: 0.7;
   line-height: 1;
 `;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function StepLanding({ business, onBook, onViewAppointments }: Props) {
+export default function StepLanding({ onBook, onViewAppointments }: Props) {
+  const handleBook = () => {
+    navigator.vibrate?.(40);
+    onBook();
+  };
+
+  const handleView = () => {
+    navigator.vibrate?.(40);
+    onViewAppointments();
+  };
+
   return (
     <Container>
-      <Greeting>Bem-vindo a</Greeting>
-      <Title>{business.name}</Title>
-
       <ButtonsWrapper>
-        <PrimaryButton onClick={onBook}>
-          <CalendarPlus size={22} weight="fill" />
+        <PrimaryButton onClick={handleBook}>
+          <IconBox>📅</IconBox>
           <ButtonLabel>
             <ButtonTitle>Agendar serviço</ButtonTitle>
             <ButtonSub>Escolha data, horário e profissional</ButtonSub>
           </ButtonLabel>
         </PrimaryButton>
 
-        <SecondaryButton onClick={onViewAppointments}>
-          <ClockCounterClockwise size={20} weight="bold" />
+        <SecondaryButton onClick={handleView}>
+          <IconBoxMuted>🕐</IconBoxMuted>
           <ButtonLabel>
             <ButtonTitle>Meus agendamentos</ButtonTitle>
             <ButtonSub>Ver histórico e próximos horários</ButtonSub>

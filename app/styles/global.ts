@@ -9,7 +9,9 @@ const GlobalStyle = createGlobalStyle`
 
   :root {
     --color-primary: #F97316;
-    --color-primary-dark: #EA6C0A;
+    --color-primary-dark: #E05A00;
+    --color-primary-glow: rgba(249, 115, 22, 0.32);
+    --color-primary-subtle: rgba(249, 115, 22, 0.08);
     --color-bg: #0A0A0A;
     --color-surface: #141414;
     --color-surface-2: #1E1E1E;
@@ -18,20 +20,26 @@ const GlobalStyle = createGlobalStyle`
     --color-text-muted: #A1A1AA;
     --color-success: #22C55E;
     --color-danger: #EF4444;
+    --color-warning: #F59E0B;
     --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --radius-xl: 24px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-xl: 26px;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.07), 0 20px 60px rgba(0,0,0,0.1);
+    --shadow-btn: 0 4px 20px var(--color-primary-glow), 0 1px 3px rgba(0,0,0,0.1);
+    --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
     --transition-theme: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   }
 
   [data-theme="light"] {
-    --color-bg: #F4F4F5;
+    --color-bg: #F2F0ED;
     --color-surface: #FFFFFF;
-    --color-surface-2: #EFEFEF;
-    --color-border: #E4E4E7;
-    --color-text: #09090B;
-    --color-text-muted: #71717A;
+    --color-surface-2: #F7F5F2;
+    --color-border: #E8E4DF;
+    --color-text: #0D0D0D;
+    --color-text-muted: #78716C;
+    --color-primary-subtle: rgba(249, 115, 22, 0.07);
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06), 0 20px 60px rgba(0,0,0,0.09);
   }
 
   html {
@@ -63,25 +71,10 @@ const GlobalStyle = createGlobalStyle`
     font-family: inherit;
   }
 
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: var(--color-surface);
-    transition: var(--transition-theme);
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: var(--color-border);
-    border-radius: 3px;
-    transition: var(--transition-theme);
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-text-muted);
-  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--color-surface); }
+  ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
 
   *, *::before, *::after {
     transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;

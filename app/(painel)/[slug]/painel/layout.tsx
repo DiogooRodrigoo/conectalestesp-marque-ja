@@ -1,44 +1,55 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import styled, { keyframes } from "styled-components";
+import styled, { keyframes, css } from "styled-components";
 import Link from "next/link";
 import { usePathname, useRouter, useParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { BusinessProvider, useBusiness } from "./BusinessContext";
-import {
-  ChartBar,
-  CalendarCheck,
-  Scissors,
-  UsersFour,
-  ProhibitInset,
-  GearSix,
-  SignOut,
-  Sun,
-  Moon,
-  Buildings,
-} from "@phosphor-icons/react";
+import type { BusinessHours } from "@/types/database";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Nav config ───────────────────────────────────────────────────────────────
 
 interface NavItem {
   label: string;
   href: string;
-  icon: React.ElementType;
+  emoji: string;
 }
 
 function buildNav(slug: string) {
   const main: NavItem[] = [
-    { label: "Visão Geral",   href: `/${slug}/painel/overview`,      icon: ChartBar },
-    { label: "Agenda",        href: `/${slug}/painel/agenda`,        icon: CalendarCheck },
-    { label: "Serviços",      href: `/${slug}/painel/servicos`,      icon: Scissors },
-    { label: "Profissionais", href: `/${slug}/painel/profissionais`, icon: UsersFour },
-    { label: "Bloqueios",     href: `/${slug}/painel/bloqueios`,     icon: ProhibitInset },
+    { label: "Visão Geral",   href: `/${slug}/painel/overview`,      emoji: "🏠" },
+    { label: "Agenda",        href: `/${slug}/painel/agenda`,        emoji: "📅" },
+    { label: "Serviços",      href: `/${slug}/painel/servicos`,      emoji: "✂️" },
+    { label: "Profissionais", href: `/${slug}/painel/profissionais`, emoji: "👥" },
+    { label: "Bloqueios",     href: `/${slug}/painel/bloqueios`,     emoji: "🚫" },
   ];
   const system: NavItem[] = [
-    { label: "Configurações", href: `/${slug}/painel/configuracoes`, icon: GearSix },
+    { label: "Configurações", href: `/${slug}/painel/configuracoes`, emoji: "⚙️" },
   ];
   return { main, system };
+}
+
+// ─── Status helpers ───────────────────────────────────────────────────────────
+
+function getBusinessStatus(hours: BusinessHours[] | null) {
+  if (!hours?.length) return { isOpen: false, label: "Fechado" };
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const todayHours = hours.find((h) => h.day_of_week === dayOfWeek);
+  if (!todayHours?.is_open) return { isOpen: false, label: "Fechado hoje" };
+  const now = today.getHours() * 60 + today.getMinutes();
+  const [openH, openM] = todayHours.open_time.split(":").map(Number);
+  const [closeH, closeM] = todayHours.close_time.split(":").map(Number);
+  const openMins = openH * 60 + (openM || 0);
+  const closeMins = closeH * 60 + (closeM || 0);
+  if (now < openMins) return { isOpen: false, label: `Abre às ${todayHours.open_time}` };
+  if (now >= closeMins) return { isOpen: false, label: "Fechado agora" };
+  return { isOpen: true, label: "Aberto agora" };
+}
+
+function getInitials(name: string) {
+  return name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
 }
 
 // ─── Animations ───────────────────────────────────────────────────────────────
@@ -48,13 +59,20 @@ const fadeIn = keyframes`
   to   { opacity: 1; transform: translateX(0); }
 `;
 
-// ─── Styled — Desktop ─────────────────────────────────────────────────────────
+const pulseDot = keyframes`
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.6); opacity: 0.5; }
+`;
+
+// ─── Styled — Layout root ─────────────────────────────────────────────────────
 
 const LayoutRoot = styled.div`
   display: flex;
   min-height: 100vh;
   background: var(--color-bg);
 `;
+
+// ─── Styled — Sidebar ─────────────────────────────────────────────────────────
 
 const Sidebar = styled.aside`
   width: 252px;
@@ -72,27 +90,36 @@ const Sidebar = styled.aside`
 
   &::-webkit-scrollbar { display: none; }
 
-  @media (max-width: 768px) {
-    display: none;
-  }
+  @media (max-width: 768px) { display: none; }
 `;
 
 const SidebarHeader = styled.div`
+  position: relative;
   padding: 20px 16px 18px;
+  overflow: hidden;
   border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   gap: 11px;
-  position: relative;
+`;
+
+const SidebarHeaderBg = styled.div`
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, rgba(249,115,22,0.10) 0%, rgba(249,115,22,0.02) 100%);
+  pointer-events: none;
 `;
 
 const LogoBadge = styled.div`
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
   overflow: hidden;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 4px 16px rgba(249,115,22,0.25), 0 2px 6px rgba(0,0,0,0.15);
+  border: 1.5px solid rgba(249,115,22,0.25);
 `;
 
 const LogoBadgeImg = styled.img`
@@ -102,24 +129,60 @@ const LogoBadgeImg = styled.img`
   display: block;
 `;
 
+const LogoInitials = styled.div<{ $color: string }>`
+  width: 100%;
+  height: 100%;
+  background: ${({ $color }) => $color};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.5px;
+`;
+
 const LogoText = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 4px;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
 `;
 
 const LogoTitle = styled.span`
-  font-size: 14.5px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 800;
   color: var(--color-text);
   letter-spacing: -0.3px;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
-const LogoSub = styled.span`
-  font-size: 11px;
-  color: var(--color-text-muted);
-  line-height: 1.2;
+const OpenBadge = styled.span<{ $open: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: ${({ $open }) => ($open ? "#16A34A" : "#DC2626")};
+  background: ${({ $open }) => ($open ? "rgba(34,197,94,0.10)" : "rgba(239,68,68,0.08)")};
+  border: 1px solid ${({ $open }) => ($open ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.20)")};
+  border-radius: 99px;
+  padding: 2px 7px;
+  width: fit-content;
+`;
+
+const OpenDot = styled.span<{ $open: boolean }>`
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: ${({ $open }) => ($open ? "#16A34A" : "#DC2626")};
+  ${({ $open }) => $open && css`animation: ${pulseDot} 2s ease infinite;`}
 `;
 
 const Nav = styled.nav`
@@ -155,63 +218,28 @@ const NavDivider = styled.div`
   opacity: 0.6;
 `;
 
-// Usa color-mix para que o background responda ao --color-primary dinâmico
 const NavLink = styled(Link)<{ $active?: boolean }>`
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   padding: 9px 11px;
   border-radius: 10px;
-  font-size: 13.5px;
-  font-weight: ${({ $active }) => ($active ? "600" : "400")};
+  font-size: 13px;
+  font-weight: ${({ $active }) => ($active ? "700" : "500")};
   color: ${({ $active }) => ($active ? "var(--color-primary)" : "var(--color-text-muted)")};
   background: ${({ $active }) => ($active ? "color-mix(in srgb, var(--color-primary) 10%, transparent)" : "transparent")};
   transition: background 0.15s, color 0.15s;
-  position: relative;
-
-  svg {
-    flex-shrink: 0;
-    color: ${({ $active }) => ($active ? "var(--color-primary)" : "var(--color-text-muted)")};
-    transition: color 0.15s;
-  }
 
   &:hover {
     background: ${({ $active }) => ($active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-surface-2)")};
     color: ${({ $active }) => ($active ? "var(--color-primary)" : "var(--color-text)")};
-    svg { color: ${({ $active }) => ($active ? "var(--color-primary)" : "var(--color-text)")}; }
   }
 `;
 
-const BusinessCard = styled.div`
-  margin: 0 10px 8px;
-  padding: 10px 12px;
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-`;
-
-const BusinessIcon = styled.div`
-  width: 28px;
-  height: 28px;
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-  border-radius: 7px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-primary);
+const NavEmoji = styled.span`
+  font-size: 15px;
   flex-shrink: 0;
-`;
-
-const BusinessName = styled.span`
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1;
 `;
 
 const SidebarFooter = styled.div`
@@ -225,24 +253,27 @@ const SidebarFooter = styled.div`
 const FooterBtn = styled.button`
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   padding: 9px 11px;
   border-radius: 10px;
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--color-text-muted);
   width: 100%;
   transition: background 0.15s, color 0.15s;
-  svg { flex-shrink: 0; }
   &:hover { background: var(--color-surface-2); color: var(--color-text); }
 `;
 
 const SignOutButton = styled(FooterBtn)`
-  &:hover {
-    background: rgba(239, 68, 68, 0.08);
-    color: var(--color-danger);
-    svg { color: var(--color-danger); }
-  }
+  &:hover { background: rgba(239,68,68,0.08); color: var(--color-danger); }
 `;
+
+const FooterEmoji = styled.span`
+  font-size: 14px;
+  flex-shrink: 0;
+  line-height: 1;
+`;
+
+// ─── Styled — Main ────────────────────────────────────────────────────────────
 
 const MainContent = styled.main`
   flex: 1;
@@ -250,11 +281,11 @@ const MainContent = styled.main`
   overflow-y: auto;
 
   @media (max-width: 768px) {
-    padding-bottom: 72px; /* espaço para o bottom nav */
+    padding-bottom: 72px;
   }
 `;
 
-// ─── Styled — Mobile ──────────────────────────────────────────────────────────
+// ─── Styled — Mobile top bar ──────────────────────────────────────────────────
 
 const MobileTopBar = styled.header`
   display: none;
@@ -264,27 +295,39 @@ const MobileTopBar = styled.header`
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    background: var(--color-surface);
+    position: relative;
+    overflow: hidden;
     border-bottom: 1px solid var(--color-border);
     position: sticky;
     top: 0;
     z-index: 50;
+    background: var(--color-surface);
   }
+`;
+
+const MobileTopBarBg = styled.div`
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, rgba(249,115,22,0.10) 0%, rgba(249,115,22,0.02) 100%);
+  pointer-events: none;
 `;
 
 const MobileTopLeft = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
+  position: relative;
+  z-index: 1;
 `;
 
 const MobileLogoBadge = styled.div`
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
   overflow: hidden;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 3px 10px rgba(249,115,22,0.2), 0 1px 4px rgba(0,0,0,0.1);
+  border: 1.5px solid rgba(249,115,22,0.2);
 `;
 
 const MobileLogoImg = styled.img`
@@ -294,27 +337,79 @@ const MobileLogoImg = styled.img`
   display: block;
 `;
 
+const MobileLogoInitials = styled.div<{ $color: string }>`
+  width: 100%;
+  height: 100%;
+  background: ${({ $color }) => $color};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+`;
+
+const MobileTopInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
 const MobileBusinessName = styled.span`
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 800;
   color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 180px;
+  max-width: 160px;
+  letter-spacing: -0.3px;
 `;
 
-const MobileSignOut = styled.button`
+const MobileOpenBadge = styled.span<{ $open: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  color: ${({ $open }) => ($open ? "#16A34A" : "#DC2626")};
+  background: ${({ $open }) => ($open ? "rgba(34,197,94,0.10)" : "rgba(239,68,68,0.08)")};
+  border: 1px solid ${({ $open }) => ($open ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.20)")};
+  border-radius: 99px;
+  padding: 1px 6px;
+  width: fit-content;
+`;
+
+const MobileOpenDot = styled.span<{ $open: boolean }>`
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: ${({ $open }) => ($open ? "#16A34A" : "#DC2626")};
+  flex-shrink: 0;
+  ${({ $open }) => $open && css`animation: ${pulseDot} 2s ease infinite;`}
+`;
+
+const MobileActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  z-index: 1;
+`;
+
+const MobileIconBtn = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 9px;
-  color: var(--color-text-muted);
-  transition: background 0.15s, color 0.15s;
-  &:hover { background: rgba(239, 68, 68, 0.08); color: #ef4444; }
+  font-size: 15px;
+  transition: background 0.15s;
+  &:hover { background: var(--color-surface-2); }
 `;
+
+// ─── Styled — Mobile bottom nav ───────────────────────────────────────────────
 
 const MobileBottomNav = styled.nav`
   display: none;
@@ -346,8 +441,26 @@ const MobileNavItem = styled(Link)<{ $active?: boolean }>`
   color: ${({ $active }) => ($active ? "var(--color-primary)" : "var(--color-text-muted)")};
   background: ${({ $active }) => ($active ? "color-mix(in srgb, var(--color-primary) 8%, transparent)" : "transparent")};
   transition: background 0.15s, color 0.15s;
+  position: relative;
 
-  svg { flex-shrink: 0; }
+  ${({ $active }) => $active && css`
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 24px;
+      height: 3px;
+      background: var(--color-primary);
+      border-radius: 0 0 3px 3px;
+    }
+  `}
+`;
+
+const MobileNavEmoji = styled.span`
+  font-size: 18px;
+  line-height: 1;
 `;
 
 const MobileNavLabel = styled.span`
@@ -358,7 +471,7 @@ const MobileNavLabel = styled.span`
   white-space: nowrap;
 `;
 
-// ─── Componentes internos (usam useBusiness) ─────────────────────────────────
+// ─── Sub-componentes (acessam useBusiness) ────────────────────────────────────
 
 function BusinessColorInjector() {
   const { business } = useBusiness();
@@ -366,9 +479,9 @@ function BusinessColorInjector() {
     if (!business?.primary_color) return;
     const color = business.primary_color;
     const hex = color.replace("#", "");
-    const r = Math.round(parseInt(hex.slice(0, 2), 16) * 0.9);
-    const g = Math.round(parseInt(hex.slice(2, 4), 16) * 0.9);
-    const b = Math.round(parseInt(hex.slice(4, 6), 16) * 0.9);
+    const r = Math.round(parseInt(hex.slice(0, 2), 16) * 0.939);
+    const g = Math.round(parseInt(hex.slice(2, 4), 16) * 0.939);
+    const b = Math.round(parseInt(hex.slice(4, 6), 16) * 0.454);
     const dark = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
     document.documentElement.style.setProperty("--color-primary", color);
     document.documentElement.style.setProperty("--color-primary-dark", dark);
@@ -376,67 +489,162 @@ function BusinessColorInjector() {
   return null;
 }
 
-function SidebarBusinessCard() {
+function SidebarLogoContent() {
   const { business } = useBusiness();
   if (!business) return null;
+  if (business.logo_url) return <LogoBadgeImg src={business.logo_url} alt={business.name} />;
   return (
-    <BusinessCard>
-      <BusinessIcon>
-        <Buildings size={15} weight="fill" />
-      </BusinessIcon>
-      <BusinessName>{business.name}</BusinessName>
-    </BusinessCard>
+    <LogoInitials $color={business.primary_color ?? "#F97316"}>
+      {getInitials(business.name)}
+    </LogoInitials>
   );
 }
 
-function SidebarLogoImg() {
+function SidebarInner({
+  navMain,
+  navSystem,
+  pathname,
+  isDark,
+  toggleTheme,
+  onSignOut,
+  businessHours,
+}: {
+  navMain: NavItem[];
+  navSystem: NavItem[];
+  pathname: string;
+  isDark: boolean;
+  toggleTheme: () => void;
+  onSignOut: () => void;
+  businessHours: BusinessHours[] | null;
+}) {
   const { business } = useBusiness();
-  const src = business?.logo_url ?? "/conecta-logo.jpeg";
-  const alt = business?.name ?? "Marque Já";
-  return <LogoBadgeImg src={src} alt={alt} />;
+  const status = getBusinessStatus(businessHours);
+
+  return (
+    <>
+      <SidebarHeader>
+        <SidebarHeaderBg />
+        <LogoBadge>
+          <SidebarLogoContent />
+        </LogoBadge>
+        <LogoText>
+          <LogoTitle>{business?.name ?? "Marque Já"}</LogoTitle>
+          <OpenBadge $open={status.isOpen}>
+            <OpenDot $open={status.isOpen} />
+            {status.label}
+          </OpenBadge>
+        </LogoText>
+      </SidebarHeader>
+
+      <Nav>
+        <NavGroup>
+          <NavGroupLabel>Menu</NavGroupLabel>
+          {navMain.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+            return (
+              <NavLink key={item.href} href={item.href} $active={isActive}>
+                <NavEmoji>{item.emoji}</NavEmoji>
+                {item.label}
+              </NavLink>
+            );
+          })}
+        </NavGroup>
+
+        <NavDivider />
+
+        <NavGroup>
+          <NavGroupLabel>Sistema</NavGroupLabel>
+          {navSystem.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+            return (
+              <NavLink key={item.href} href={item.href} $active={isActive}>
+                <NavEmoji>{item.emoji}</NavEmoji>
+                {item.label}
+              </NavLink>
+            );
+          })}
+        </NavGroup>
+      </Nav>
+
+      <SidebarFooter>
+        <FooterBtn onClick={toggleTheme}>
+          <FooterEmoji>{isDark ? "☀️" : "🌙"}</FooterEmoji>
+          {isDark ? "Modo Claro" : "Modo Escuro"}
+        </FooterBtn>
+        <SignOutButton onClick={onSignOut}>
+          <FooterEmoji>🚪</FooterEmoji>
+          Sair da conta
+        </SignOutButton>
+      </SidebarFooter>
+    </>
+  );
 }
 
-function MobileHeader({ onSignOut, isDark, toggleTheme }: { onSignOut: () => void; isDark: boolean; toggleTheme: () => void }) {
+function MobileHeader({
+  isDark,
+  toggleTheme,
+  onSignOut,
+  businessHours,
+}: {
+  isDark: boolean;
+  toggleTheme: () => void;
+  onSignOut: () => void;
+  businessHours: BusinessHours[] | null;
+}) {
   const { business } = useBusiness();
-  const logoSrc = business?.logo_url ?? "/conecta-logo.jpeg";
+  const status = getBusinessStatus(businessHours);
+
   return (
     <MobileTopBar>
+      <MobileTopBarBg />
       <MobileTopLeft>
         <MobileLogoBadge>
-          <MobileLogoImg src={logoSrc} alt={business?.name ?? "Marque Já"} />
+          {business?.logo_url ? (
+            <MobileLogoImg src={business.logo_url} alt={business.name} />
+          ) : (
+            <MobileLogoInitials $color={business?.primary_color ?? "#F97316"}>
+              {business ? getInitials(business.name) : "MJ"}
+            </MobileLogoInitials>
+          )}
         </MobileLogoBadge>
-        <MobileBusinessName>{business?.name ?? "Marque Já"}</MobileBusinessName>
+        <MobileTopInfo>
+          <MobileBusinessName>{business?.name ?? "Marque Já"}</MobileBusinessName>
+          <MobileOpenBadge $open={status.isOpen}>
+            <MobileOpenDot $open={status.isOpen} />
+            {status.label}
+          </MobileOpenBadge>
+        </MobileTopInfo>
       </MobileTopLeft>
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <MobileSignOut onClick={toggleTheme} aria-label={isDark ? "Modo claro" : "Modo escuro"}>
-          {isDark ? <Sun size={18} /> : <Moon size={18} />}
-        </MobileSignOut>
-        <MobileSignOut onClick={onSignOut} aria-label="Sair">
-          <SignOut size={18} />
-        </MobileSignOut>
-      </div>
+      <MobileActions>
+        <MobileIconBtn onClick={toggleTheme} aria-label={isDark ? "Modo claro" : "Modo escuro"}>
+          {isDark ? "☀️" : "🌙"}
+        </MobileIconBtn>
+        <MobileIconBtn onClick={onSignOut} aria-label="Sair">
+          🚪
+        </MobileIconBtn>
+      </MobileActions>
     </MobileTopBar>
   );
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Layout principal ─────────────────────────────────────────────────────────
 
 export default function PainelLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const params = useParams();
   const slug = params.slug as string;
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(true);
+  const [businessHours, setBusinessHours] = useState<BusinessHours[] | null>(null);
 
   const { main: NAV_MAIN, system: NAV_SYSTEM } = buildNav(slug);
 
-    const MOBILE_NAV: NavItem[] = [
-    { label: "Início",    href: `/${slug}/painel/overview`,      icon: ChartBar },
-    { label: "Agenda",    href: `/${slug}/painel/agenda`,        icon: CalendarCheck },
-    { label: "Serviços",  href: `/${slug}/painel/servicos`,      icon: Scissors },
-    { label: "Equipe",    href: `/${slug}/painel/profissionais`, icon: UsersFour },
-    { label: "Bloqueios", href: `/${slug}/painel/bloqueios`,     icon: ProhibitInset },
-    { label: "Config",    href: `/${slug}/painel/configuracoes`, icon: GearSix },
+  const MOBILE_NAV: NavItem[] = [
+    { label: "Início",   href: `/${slug}/painel/overview`,      emoji: "🏠" },
+    { label: "Agenda",   href: `/${slug}/painel/agenda`,        emoji: "📅" },
+    { label: "Serviços", href: `/${slug}/painel/servicos`,      emoji: "✂️" },
+    { label: "Equipe",   href: `/${slug}/painel/profissionais`, emoji: "👥" },
+    { label: "Config",   href: `/${slug}/painel/configuracoes`, emoji: "⚙️" },
   ];
 
   async function handleSignOut() {
@@ -446,14 +654,35 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     const saved = localStorage.getItem("mj_theme");
-    if (saved === "dark") {
-      setIsDark(true);
-      document.documentElement.removeAttribute("data-theme");
-    } else {
+    if (saved === "light") {
       setIsDark(false);
       document.documentElement.setAttribute("data-theme", "light");
+    } else {
+      setIsDark(true);
+      document.documentElement.removeAttribute("data-theme");
     }
   }, []);
+
+  useEffect(() => {
+    async function fetchHours() {
+      const supabase = getSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: biz } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("owner_id", session.user.id)
+        .eq("slug", slug)
+        .single();
+      if (!biz) return;
+      const { data: hours } = await supabase
+        .from("business_hours")
+        .select("*")
+        .eq("business_id", biz.id);
+      if (hours) setBusinessHours(hours as BusinessHours[]);
+    }
+    fetchHours();
+  }, [slug]);
 
   function toggleTheme() {
     const next = !isDark;
@@ -474,66 +703,25 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
 
         {/* ── Sidebar desktop ── */}
         <Sidebar>
-          <SidebarHeader>
-            <LogoBadge>
-              <SidebarLogoImg />
-            </LogoBadge>
-            <LogoText>
-              <LogoTitle>Marque Já</LogoTitle>
-              <LogoSub>Painel de Gestão</LogoSub>
-            </LogoText>
-          </SidebarHeader>
-
-          <Nav>
-            <NavGroup>
-              <NavGroupLabel>Menu</NavGroupLabel>
-              {NAV_MAIN.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-                return (
-                  <NavLink key={item.href} href={item.href} $active={isActive}>
-                    <Icon size={17} weight={isActive ? "fill" : "regular"} />
-                    {item.label}
-                  </NavLink>
-                );
-              })}
-            </NavGroup>
-
-            <NavDivider />
-
-            <NavGroup>
-              <NavGroupLabel>Sistema</NavGroupLabel>
-              {NAV_SYSTEM.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-                return (
-                  <NavLink key={item.href} href={item.href} $active={isActive}>
-                    <Icon size={17} weight={isActive ? "fill" : "regular"} />
-                    {item.label}
-                  </NavLink>
-                );
-              })}
-            </NavGroup>
-          </Nav>
-
-          <SidebarBusinessCard />
-
-          <SidebarFooter>
-            <FooterBtn onClick={toggleTheme}>
-              {isDark ? <Sun size={17} /> : <Moon size={17} />}
-              {isDark ? "Modo Claro" : "Modo Escuro"}
-            </FooterBtn>
-            <SignOutButton onClick={handleSignOut}>
-              <SignOut size={17} />
-              Sair da conta
-            </SignOutButton>
-          </SidebarFooter>
+          <SidebarInner
+            navMain={NAV_MAIN}
+            navSystem={NAV_SYSTEM}
+            pathname={pathname}
+            isDark={isDark}
+            toggleTheme={toggleTheme}
+            onSignOut={handleSignOut}
+            businessHours={businessHours}
+          />
         </Sidebar>
 
-        {/* ── Conteúdo principal ── */}
+        {/* ── Conteúdo ── */}
         <MainContent>
-          {/* Header mobile (logo + nome do negócio + sair) */}
-          <MobileHeader onSignOut={handleSignOut} isDark={isDark} toggleTheme={toggleTheme} />
+          <MobileHeader
+            isDark={isDark}
+            toggleTheme={toggleTheme}
+            onSignOut={handleSignOut}
+            businessHours={businessHours}
+          />
           {children}
         </MainContent>
 
@@ -542,11 +730,10 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
       {/* ── Bottom nav mobile ── */}
       <MobileBottomNav>
         {MOBILE_NAV.map((item) => {
-          const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <MobileNavItem key={item.href} href={item.href} $active={isActive}>
-              <Icon size={20} weight={isActive ? "fill" : "regular"} />
+              <MobileNavEmoji>{item.emoji}</MobileNavEmoji>
               <MobileNavLabel>{item.label}</MobileNavLabel>
             </MobileNavItem>
           );

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import styled, { keyframes } from "styled-components";
-import { ArrowLeft, CalendarBlank, ForkKnife } from "@phosphor-icons/react";
 
 interface Props {
   businessId: string;
@@ -35,14 +34,12 @@ const BackButton = styled.button`
   cursor: pointer;
   transition: color 0.2s;
   padding: 0;
-  &:hover {
-    color: var(--color-text);
-  }
+  &:hover { color: var(--color-text); }
 `;
 
 const Title = styled.h2`
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--color-text);
   margin-bottom: 4px;
   letter-spacing: -0.4px;
@@ -72,18 +69,39 @@ const SkeletonChip = styled.div`
   animation: ${pulse} 1.5s ease infinite;
 `;
 
-const SectionLabel = styled.p`
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 16px;
-  margin-bottom: 8px;
+// ── Pill-style section header ─────────────────────────────────────────────────
 
-  &:first-child {
+const PeriodHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  margin-bottom: 10px;
+
+  &:first-of-type {
     margin-top: 0;
   }
+`;
+
+const PeriodPill = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 99px;
+  padding: 4px 12px 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+`;
+
+const PeriodLine = styled.div`
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
 `;
 
 const SlotsGrid = styled.div`
@@ -92,22 +110,58 @@ const SlotsGrid = styled.div`
   gap: 8px;
 `;
 
-const TimeChip = styled.button<{ $selected: boolean }>`
+const TimeChipWrapper = styled.div`
+  position: relative;
+`;
+
+const TimeChip = styled.button<{ $selected: boolean; $last?: boolean }>`
+  width: 100%;
   min-height: 44px;
   border-radius: 10px;
-  border: 1px solid ${({ $selected }) =>
-    $selected ? "var(--color-primary)" : "var(--color-border)"};
+  border: 1.5px solid ${({ $selected, $last }) =>
+    $selected ? "transparent" : $last ? "rgba(239,68,68,0.35)" : "var(--color-border)"};
   background: ${({ $selected }) =>
-    $selected ? "var(--color-primary)" : "var(--color-surface-2)"};
+    $selected ? "var(--gradient-primary)" : "var(--color-surface-2)"};
+  box-shadow: ${({ $selected }) =>
+    $selected ? "0 4px 12px var(--color-primary-glow)" : "none"};
   color: ${({ $selected }) => ($selected ? "#fff" : "var(--color-text)")};
   font-size: 14px;
   font-weight: ${({ $selected }) => ($selected ? "600" : "400")};
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.12s, box-shadow 0.15s;
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: ${({ $selected }) =>
+      $selected ? "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, transparent 60%)" : "none"};
+    pointer-events: none;
+  }
 
   &:hover {
-    border-color: ${({ $selected }) => ($selected ? "var(--color-primary)" : "#3a3a3a")};
+    border-color: ${({ $selected, $last }) =>
+      $selected ? "transparent" : $last ? "rgba(239,68,68,0.55)" : "#a0a0a0"};
+    transform: translateY(-1px);
   }
+  &:active { transform: translateY(0); }
+`;
+
+const LastSlotBadge = styled.div`
+  position: absolute;
+  top: -7px;
+  right: -4px;
+  font-size: 9px;
+  font-weight: 700;
+  background: var(--color-danger);
+  color: #fff;
+  border-radius: 99px;
+  padding: 2px 6px;
+  letter-spacing: 0.2px;
+  pointer-events: none;
+  white-space: nowrap;
 `;
 
 // ─── Card de almoço ───────────────────────────────────────────────────────────
@@ -124,10 +178,9 @@ const LunchCard = styled.div`
 `;
 
 const LunchIcon = styled.div`
-  color: #F59E0B;
-  display: flex;
-  align-items: center;
+  font-size: 18px;
   flex-shrink: 0;
+  line-height: 1;
 `;
 
 const LunchText = styled.p`
@@ -193,6 +246,56 @@ function groupSlotsByPeriod(slots: string[]): {
   return { manha, tarde, noite };
 }
 
+// ─── Sub-component: Period Section ───────────────────────────────────────────
+
+function PeriodSection({
+  icon,
+  label,
+  slots,
+  selectedTime,
+  onSelect,
+}: {
+  icon: string;
+  label: string;
+  slots: string[];
+  selectedTime: string | null;
+  onSelect: (time: string) => void;
+}) {
+  if (slots.length === 0) return null;
+  const lastSlot = slots[slots.length - 1];
+  const isOnlyOne = slots.length === 1;
+
+  return (
+    <>
+      <PeriodHeader>
+        <PeriodPill>
+          {icon}
+          {label}
+        </PeriodPill>
+        <PeriodLine />
+      </PeriodHeader>
+      <SlotsGrid>
+        {slots.map((slot) => {
+          const isLast = slot === lastSlot && isOnlyOne;
+          return (
+            <TimeChipWrapper key={slot}>
+              <TimeChip
+                $selected={selectedTime === slot}
+                $last={isLast}
+                type="button"
+                onClick={() => onSelect(slot)}
+              >
+                {slot}
+              </TimeChip>
+              {isLast && <LastSlotBadge>Último</LastSlotBadge>}
+            </TimeChipWrapper>
+          );
+        })}
+      </SlotsGrid>
+    </>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function StepTimePicker({
@@ -240,15 +343,12 @@ export default function StepTimePicker({
   });
 
   const { manha, tarde, noite } = groupSlotsByPeriod(slots);
-
-  // Verifica se tem configuração de almoço para mostrar o card
   const hasLunchBreak = !!lunchStart && !!lunchEnd;
 
   return (
     <Container>
       <BackButton onClick={onBack} type="button">
-        <ArrowLeft size={16} />
-        Voltar
+        ← Voltar
       </BackButton>
 
       <Title>Escolha o horário</Title>
@@ -264,9 +364,7 @@ export default function StepTimePicker({
 
       {!loading && error && (
         <EmptyState>
-          <EmptyIcon>
-            <CalendarBlank size={36} />
-          </EmptyIcon>
+          <EmptyIcon style={{ fontSize: 36 }}>📅</EmptyIcon>
           <EmptyText>Não foi possível carregar os horários.</EmptyText>
           <EmptyHint>Tente voltar e selecionar outra data.</EmptyHint>
         </EmptyState>
@@ -274,9 +372,7 @@ export default function StepTimePicker({
 
       {!loading && !error && slots.length === 0 && (
         <EmptyState>
-          <EmptyIcon>
-            <CalendarBlank size={36} />
-          </EmptyIcon>
+          <EmptyIcon style={{ fontSize: 36 }}>📅</EmptyIcon>
           <EmptyText>Nenhum horário disponível</EmptyText>
           <EmptyHint>Tente voltar e escolher outra data.</EmptyHint>
         </EmptyState>
@@ -284,29 +380,17 @@ export default function StepTimePicker({
 
       {!loading && !error && slots.length > 0 && (
         <>
-          {manha.length > 0 && (
-            <>
-              <SectionLabel>Manhã</SectionLabel>
-              <SlotsGrid>
-                {manha.map((slot) => (
-                  <TimeChip
-                    key={slot}
-                    $selected={selectedTime === slot}
-                    type="button"
-                    onClick={() => onSelect(slot)}
-                  >
-                    {slot}
-                  </TimeChip>
-                ))}
-              </SlotsGrid>
-            </>
-          )}
+          <PeriodSection
+            icon="☀️"
+            label="Manhã"
+            slots={manha}
+            selectedTime={selectedTime}
+            onSelect={onSelect}
+          />
 
           {hasLunchBreak && manha.length > 0 && tarde.length > 0 && (
             <LunchCard>
-              <LunchIcon>
-                <ForkKnife size={18} weight="fill" />
-              </LunchIcon>
+              <LunchIcon>🍴</LunchIcon>
               <LunchText>
                 <strong>Almoço</strong> — horários suspensos das{" "}
                 <strong>{lunchStart}</strong> às <strong>{lunchEnd}</strong>
@@ -314,41 +398,21 @@ export default function StepTimePicker({
             </LunchCard>
           )}
 
-          {tarde.length > 0 && (
-            <>
-              <SectionLabel>Tarde</SectionLabel>
-              <SlotsGrid>
-                {tarde.map((slot) => (
-                  <TimeChip
-                    key={slot}
-                    $selected={selectedTime === slot}
-                    type="button"
-                    onClick={() => onSelect(slot)}
-                  >
-                    {slot}
-                  </TimeChip>
-                ))}
-              </SlotsGrid>
-            </>
-          )}
+          <PeriodSection
+            icon="🌤"
+            label="Tarde"
+            slots={tarde}
+            selectedTime={selectedTime}
+            onSelect={onSelect}
+          />
 
-          {noite.length > 0 && (
-            <>
-              <SectionLabel>Noite</SectionLabel>
-              <SlotsGrid>
-                {noite.map((slot) => (
-                  <TimeChip
-                    key={slot}
-                    $selected={selectedTime === slot}
-                    type="button"
-                    onClick={() => onSelect(slot)}
-                  >
-                    {slot}
-                  </TimeChip>
-                ))}
-              </SlotsGrid>
-            </>
-          )}
+          <PeriodSection
+            icon="🌙"
+            label="Noite"
+            slots={noite}
+            selectedTime={selectedTime}
+            onSelect={onSelect}
+          />
         </>
       )}
     </Container>

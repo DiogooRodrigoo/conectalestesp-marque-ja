@@ -1,7 +1,7 @@
 "use client";
 
-import styled from "styled-components";
-import { CheckCircle, Clock, Plus, Minus } from "@phosphor-icons/react";
+import styled, { keyframes } from "styled-components";
+import { CheckCircle } from "@phosphor-icons/react";
 import { Service } from "@/types/database";
 
 interface Props {
@@ -11,6 +11,14 @@ interface Props {
   onAdvance: () => void;
 }
 
+// ─── Animations ──────────────────────────────────────────────────────────────
+
+const checkPop = keyframes`
+  0%   { transform: scale(0.4); opacity: 0; }
+  65%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+`;
+
 // ─── Styled Components ────────────────────────────────────────────────────────
 
 const Container = styled.div`
@@ -19,7 +27,7 @@ const Container = styled.div`
 
 const Title = styled.h2`
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--color-text);
   letter-spacing: -0.4px;
   margin-bottom: 4px;
@@ -41,26 +49,37 @@ const ServiceList = styled.div`
 const ServiceCard = styled.button<{ $selected: boolean }>`
   position: relative;
   width: 100%;
-  padding: 16px;
+  padding: 14px 16px;
   border-radius: var(--radius-md);
   border: ${({ $selected }) =>
     $selected
-      ? "1.5px solid var(--color-primary)"
+      ? "1.5px solid rgba(249,115,22,0.28)"
       : "1px solid var(--color-border)"};
-  border-left: ${({ $selected }) =>
-    $selected ? "3px solid var(--color-primary)" : "1px solid var(--color-border)"};
   background: ${({ $selected }) =>
-    $selected ? "rgba(249,115,22,0.08)" : "var(--color-surface-2)"};
+    $selected ? "var(--color-primary-subtle)" : "var(--color-surface-2)"};
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.18s, background 0.18s, transform 0.12s;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: ${({ $selected }) => ($selected ? "var(--gradient-primary)" : "var(--color-border)")};
+    border-radius: 4px 0 0 4px;
+    transition: background 0.18s ease;
+  }
 
   &:hover {
+    transform: translateY(-1px);
     border-color: ${({ $selected }) =>
-      $selected ? "var(--color-primary)" : "#3a3a3a"};
-    border-left-color: ${({ $selected }) =>
-      $selected ? "var(--color-primary)" : "#3a3a3a"};
+      $selected ? "rgba(249,115,22,0.4)" : "#a0a0a0"};
   }
+  &:active { transform: translateY(0); }
 `;
 
 const CardHeader = styled.div`
@@ -68,7 +87,15 @@ const CardHeader = styled.div`
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
+`;
+
+const ServiceNameRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
 `;
 
 const ServiceName = styled.span`
@@ -78,19 +105,48 @@ const ServiceName = styled.span`
   line-height: 1.3;
 `;
 
-const CheckBadge = styled.div`
+const PopularBadge = styled.span`
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-primary);
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  border-radius: 99px;
+  padding: 2px 7px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.2px;
+`;
+
+const AnimatedCheck = styled.div<{ $visible: boolean }>`
   color: var(--color-primary);
   display: flex;
   align-items: center;
   flex-shrink: 0;
   margin-top: 1px;
+  animation: ${({ $visible }) => ($visible ? checkPop : "none")} 0.35s
+    cubic-bezier(0.34, 1.56, 0.64, 1) both;
+`;
+
+const UncheckedCircle = styled.div`
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: border-color 0.15s;
+
+  ${ServiceCard}:hover & {
+    border-color: var(--color-text-muted);
+  }
 `;
 
 const ServiceDescription = styled.p`
   font-size: 12px;
   color: var(--color-text-muted);
   line-height: 1.45;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -121,11 +177,11 @@ const Price = styled.span`
 // ─── Footer de total ──────────────────────────────────────────────────────────
 
 const TotalFooter = styled.div`
-  border: 1px solid var(--color-border);
+  border: 1px solid rgba(249,115,22,0.18);
   border-radius: var(--radius-md);
   padding: 14px 16px;
   margin-bottom: 14px;
-  background: var(--color-surface-2);
+  background: linear-gradient(135deg, rgba(249,115,22,0.07) 0%, rgba(249,115,22,0.02) 100%);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -152,28 +208,48 @@ const TotalValue = styled.span`
 const TotalPriceValue = styled.span`
   font-size: 18px;
   font-weight: 800;
-  color: var(--color-primary);
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 `;
 
 const AdvanceButton = styled.button<{ $disabled: boolean }>`
   width: 100%;
-  height: 52px;
-  border-radius: 12px;
+  height: 54px;
+  border-radius: var(--radius-md);
   background: ${({ $disabled }) =>
-    $disabled ? "var(--color-border)" : "var(--color-primary)"};
+    $disabled ? "var(--color-border)" : "var(--gradient-primary)"};
   color: ${({ $disabled }) => ($disabled ? "var(--color-text-muted)" : "#fff")};
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 800;
   border: none;
   cursor: ${({ $disabled }) => ($disabled ? "not-allowed" : "pointer")};
-  transition: opacity 0.2s, background 0.2s;
+  transition: opacity 0.2s, transform 0.12s, box-shadow 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  letter-spacing: -0.2px;
+  box-shadow: ${({ $disabled }) => ($disabled ? "none" : "var(--shadow-btn)")};
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: ${({ $disabled }) =>
+      $disabled ? "none" : "linear-gradient(180deg, rgba(255,255,255,0.13) 0%, transparent 60%)"};
+    pointer-events: none;
+  }
 
   &:hover {
-    opacity: ${({ $disabled }) => ($disabled ? 1 : 0.88)};
+    opacity: ${({ $disabled }) => ($disabled ? 1 : 0.92)};
+    transform: ${({ $disabled }) => ($disabled ? "none" : "translateY(-1px)")};
+  }
+  &:active {
+    transform: translateY(0);
   }
 `;
 
@@ -214,7 +290,11 @@ export default function StepServiceSelect({ services, selectedIds, onSelect, onA
   const totalDuration = selectedServices.reduce((acc, s) => acc + s.duration_min, 0);
   const hasSelection = selectedIds.length > 0;
 
+  // Serviço mais popular = primeiro da lista (menor display_order)
+  const popularId = activeServices[0]?.id;
+
   const toggleService = (id: string) => {
+    navigator.vibrate?.(30);
     if (selectedIds.includes(id)) {
       onSelect(selectedIds.filter((sid) => sid !== id));
     } else {
@@ -230,6 +310,8 @@ export default function StepServiceSelect({ services, selectedIds, onSelect, onA
       <ServiceList>
         {activeServices.map((service) => {
           const isSelected = selectedIds.includes(service.id);
+          const isPopular = service.id === popularId && activeServices.length > 1;
+
           return (
             <ServiceCard
               key={service.id}
@@ -238,15 +320,16 @@ export default function StepServiceSelect({ services, selectedIds, onSelect, onA
               type="button"
             >
               <CardHeader>
-                <ServiceName>{service.name}</ServiceName>
+                <ServiceNameRow>
+                  <ServiceName>{service.name}</ServiceName>
+                  {isPopular && <PopularBadge>Mais pedido</PopularBadge>}
+                </ServiceNameRow>
                 {isSelected ? (
-                  <CheckBadge>
-                    <CheckCircle size={18} weight="fill" />
-                  </CheckBadge>
+                  <AnimatedCheck $visible={isSelected}>
+                    <CheckCircle size={20} weight="fill" />
+                  </AnimatedCheck>
                 ) : (
-                  <CheckBadge style={{ color: "var(--color-text-muted)", opacity: 0.4 }}>
-                    <Plus size={18} weight="bold" />
-                  </CheckBadge>
+                  <UncheckedCircle />
                 )}
               </CardHeader>
 
@@ -256,8 +339,7 @@ export default function StepServiceSelect({ services, selectedIds, onSelect, onA
 
               <CardFooter>
                 <DurationBadge>
-                  <Clock size={13} />
-                  {formatDuration(service.duration_min)}
+                  ⏱ {formatDuration(service.duration_min)}
                 </DurationBadge>
                 <Price>{formatPrice(service.price_cents)}</Price>
               </CardFooter>

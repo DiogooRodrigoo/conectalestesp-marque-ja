@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import styled, { keyframes } from "styled-components";
-import { ArrowLeft, WhatsappLogo, ArrowClockwise } from "@phosphor-icons/react";
+import { ArrowClockwise } from "@phosphor-icons/react";
 
 interface Props {
   clientPhone: string;
@@ -18,10 +18,11 @@ const Container = styled.div`
 `;
 
 const BackButton = styled.button`
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
+  font-weight: 600;
   color: var(--color-text-muted);
   margin-bottom: 20px;
   padding: 0;
@@ -34,7 +35,7 @@ const BackButton = styled.button`
 
 const Title = styled.h2`
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--color-text);
   letter-spacing: -0.4px;
   margin-bottom: 6px;
@@ -52,27 +53,35 @@ const PhoneHighlight = styled.span`
   font-weight: 600;
 `;
 
-const OtpRow = styled.div`
+const OtpRow = styled.div<{ $shake: boolean }>`
   display: flex;
   gap: 10px;
   justify-content: center;
   margin-bottom: 24px;
+  animation: ${({ $shake }) => ($shake ? shake : "none")} 0.5s ease both;
 `;
 
-const OtpInput = styled.input<{ $hasError: boolean }>`
+const OtpInput = styled.input<{ $hasError: boolean; $filled: boolean }>`
   width: 48px;
-  height: 56px;
+  height: 58px;
   text-align: center;
   font-size: 22px;
-  font-weight: 700;
-  border-radius: 12px;
-  background: var(--color-surface-2);
-  border: 1.5px solid ${({ $hasError }) =>
-    $hasError ? "var(--color-danger)" : "var(--color-border)"};
+  font-weight: 800;
+  border-radius: 14px;
+  background: ${({ $hasError, $filled }) =>
+    $hasError ? "var(--color-surface-2)" : $filled ? "rgba(249,115,22,0.04)" : "var(--color-surface-2)"};
+  border: 1.5px solid ${({ $hasError, $filled }) =>
+    $hasError ? "var(--color-danger)" : $filled ? "var(--color-primary)" : "var(--color-border)"};
+  box-shadow: ${({ $hasError, $filled }) =>
+    $hasError
+      ? "0 0 0 3px rgba(239,68,68,0.12)"
+      : $filled
+      ? "0 0 0 3px rgba(249,115,22,0.12)"
+      : "none"};
   color: var(--color-text);
   outline: none;
   caret-color: var(--color-primary);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 
   &:focus {
     border-color: ${({ $hasError }) =>
@@ -80,7 +89,7 @@ const OtpInput = styled.input<{ $hasError: boolean }>`
     box-shadow: ${({ $hasError }) =>
       $hasError
         ? "0 0 0 3px rgba(239,68,68,0.12)"
-        : "0 0 0 3px rgba(249,115,22,0.12)"};
+        : "0 0 0 3px rgba(249,115,22,0.14)"};
   }
 `;
 
@@ -97,14 +106,26 @@ const spin = keyframes`
   to { transform: rotate(360deg); }
 `;
 
+const shake = keyframes`
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-6px); }
+  30%  { transform: translateX(6px); }
+  45%  { transform: translateX(-5px); }
+  60%  { transform: translateX(5px); }
+  75%  { transform: translateX(-3px); }
+  90%  { transform: translateX(3px); }
+  100% { transform: translateX(0); }
+`;
+
 const ConfirmButton = styled.button<{ $loading: boolean }>`
   width: 100%;
-  height: 52px;
-  background: var(--color-primary);
+  height: 54px;
+  background: var(--gradient-primary);
   color: #fff;
   font-size: 15px;
-  font-weight: 700;
-  border-radius: 12px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  border-radius: var(--radius-md);
   border: none;
   cursor: ${({ $loading }) => ($loading ? "not-allowed" : "pointer")};
   opacity: ${({ $loading }) => ($loading ? 0.7 : 1)};
@@ -112,16 +133,31 @@ const ConfirmButton = styled.button<{ $loading: boolean }>`
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, transform 0.12s, box-shadow 0.2s;
+  box-shadow: ${({ $loading }) => ($loading ? "none" : "var(--shadow-btn)")};
   margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.13) 0%, transparent 60%);
+    pointer-events: none;
+  }
 
   &:hover {
-    opacity: ${({ $loading }) => ($loading ? 0.7 : 0.88)};
+    opacity: ${({ $loading }) => ($loading ? 0.7 : 0.92)};
+    transform: ${({ $loading }) => ($loading ? "none" : "translateY(-1px)")};
   }
+  &:active { transform: translateY(0); }
 
   &:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
   }
 `;
 
@@ -164,11 +200,11 @@ const WhatsAppBadge = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
   font-size: 12px;
   color: #25D366;
   margin-top: 20px;
-  font-weight: 500;
+  font-weight: 600;
 `;
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -184,6 +220,7 @@ export default function StepPhoneVerification({
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shaking, setShaking] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [sending, setSending] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -246,6 +283,9 @@ export default function StepPhoneVerification({
 
       if (!res.ok) {
         setError(data.error ?? "Código inválido");
+        setShaking(true);
+        navigator.vibrate?.([80, 40, 80]);
+        setTimeout(() => setShaking(false), 600);
         return;
       }
 
@@ -288,8 +328,7 @@ export default function StepPhoneVerification({
   return (
     <Container>
       <BackButton onClick={onBack} type="button" disabled={loading}>
-        <ArrowLeft size={16} />
-        Voltar
+        ← Voltar
       </BackButton>
 
       <Title>Verificar WhatsApp</Title>
@@ -298,7 +337,7 @@ export default function StepPhoneVerification({
         <PhoneHighlight>{clientPhone}</PhoneHighlight>
       </Subtitle>
 
-      <OtpRow onPaste={handlePaste}>
+      <OtpRow onPaste={handlePaste} $shake={shaking}>
         {digits.map((d, i) => (
           <OtpInput
             key={i}
@@ -308,6 +347,7 @@ export default function StepPhoneVerification({
             maxLength={1}
             value={d}
             $hasError={!!error}
+            $filled={!!d && !error}
             onChange={(e) => handleDigitChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
             autoFocus={i === 0}
@@ -347,8 +387,7 @@ export default function StepPhoneVerification({
       </ResendRow>
 
       <WhatsAppBadge>
-        <WhatsappLogo size={14} weight="fill" />
-        Código enviado via WhatsApp
+        💬 Código enviado via WhatsApp
       </WhatsAppBadge>
     </Container>
   );

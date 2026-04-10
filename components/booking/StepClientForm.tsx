@@ -2,12 +2,18 @@
 
 import { useState } from "react";
 import styled from "styled-components";
-import { ArrowLeft, WhatsappLogo } from "@phosphor-icons/react";
+
+interface BookingSummary {
+  serviceNames: string[];
+  date: string | null;
+  time: string | null;
+}
 
 interface Props {
   clientName: string;
   clientPhone: string;
   businessId: string;
+  summary?: BookingSummary;
   onChange: (field: "clientName" | "clientPhone", value: string) => void;
   onNext: () => void;
   onBack: () => void;
@@ -20,10 +26,11 @@ const Container = styled.div`
 `;
 
 const BackButton = styled.button`
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
+  font-weight: 600;
   color: var(--color-text-muted);
   margin-bottom: 20px;
   padding: 0;
@@ -31,15 +38,47 @@ const BackButton = styled.button`
   border: none;
   cursor: pointer;
   transition: color 0.2s;
-
-  &:hover {
-    color: var(--color-text);
-  }
+  &:hover { color: var(--color-text); }
 `;
+
+// ── Mini summary ──────────────────────────────────────────────────────────────
+
+const SummaryCard = styled.div`
+  background: linear-gradient(135deg, rgba(249,115,22,0.07) 0%, rgba(249,115,22,0.02) 100%);
+  border: 1px solid rgba(249,115,22,0.2);
+  border-left: 4px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+`;
+
+const SummaryRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const SummaryIcon = styled.div`
+  font-size: 14px;
+  flex-shrink: 0;
+  line-height: 1;
+`;
+
+const SummaryText = styled.span`
+  font-size: 13px;
+  color: var(--color-text);
+  font-weight: 500;
+  line-height: 1.3;
+`;
+
+// ── Form ─────────────────────────────────────────────────────────────────────
 
 const Title = styled.h2`
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--color-text);
   letter-spacing: -0.4px;
   margin-bottom: 4px;
@@ -114,24 +153,40 @@ const PhoneHint = styled.p`
 
 const SubmitButton = styled.button`
   width: 100%;
-  height: 52px;
-  background: var(--color-primary);
+  height: 54px;
+  background: var(--gradient-primary);
   color: #fff;
   font-size: 15px;
-  font-weight: 700;
-  border-radius: 12px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  border-radius: var(--radius-md);
   border: none;
   cursor: pointer;
   margin-top: 4px;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, transform 0.12s, box-shadow 0.2s;
+  box-shadow: var(--shadow-btn);
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.13) 0%, transparent 60%);
+    pointer-events: none;
+  }
 
   &:hover {
-    opacity: 0.9;
+    opacity: 0.92;
+    transform: translateY(-1px);
   }
+  &:active { transform: translateY(0); }
 
   &:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
   }
 `;
 
@@ -149,12 +204,21 @@ function countDigits(v: string): number {
   return v.replace(/\D/g, "").length;
 }
 
+function formatDatePretty(ymd: string): string {
+  return new Date(`${ymd}T12:00:00`).toLocaleDateString("pt-BR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function StepClientForm({
   clientName,
   clientPhone,
   businessId,
+  summary,
   onChange,
   onNext,
   onBack,
@@ -183,29 +247,53 @@ export default function StepClientForm({
     setTouched({ name: true, phone: true });
     if (!isValid) return;
 
-    // Dispara envio do código OTP em background antes de avançar
     const cleanPhone = clientPhone.replace(/\D/g, "");
     fetch("/api/verify/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone: cleanPhone, business_id: businessId }),
-    }).catch(() => {/* tratado na tela de verificação */});
+    }).catch(() => {});
 
     onNext();
   };
 
+  const hasSummary = summary && (summary.serviceNames.length > 0 || summary.date || summary.time);
+
   return (
     <Container>
       <BackButton onClick={onBack} type="button">
-        <ArrowLeft size={16} />
-        Voltar
+        ← Voltar
       </BackButton>
+
+      {hasSummary && (
+        <SummaryCard>
+          {summary.serviceNames.length > 0 && (
+            <SummaryRow>
+              <SummaryIcon>✂️</SummaryIcon>
+              <SummaryText>{summary.serviceNames.join(" + ")}</SummaryText>
+            </SummaryRow>
+          )}
+          {summary.date && (
+            <SummaryRow>
+              <SummaryIcon>📅</SummaryIcon>
+              <SummaryText style={{ textTransform: "capitalize" }}>
+                {formatDatePretty(summary.date)}
+              </SummaryText>
+            </SummaryRow>
+          )}
+          {summary.time && (
+            <SummaryRow>
+              <SummaryIcon>🕘</SummaryIcon>
+              <SummaryText>{summary.time}</SummaryText>
+            </SummaryRow>
+          )}
+        </SummaryCard>
+      )}
 
       <Title>Seus dados</Title>
       <Subtitle>Preencha para confirmar seu agendamento</Subtitle>
 
       <Form onSubmit={handleSubmit} noValidate>
-        {/* Name field */}
         <FieldGroup>
           <Label htmlFor="clientName">Seu nome</Label>
           <StyledInput
@@ -221,7 +309,6 @@ export default function StepClientForm({
           {nameError && <ErrorText>{nameError}</ErrorText>}
         </FieldGroup>
 
-        {/* Phone field */}
         <FieldGroup>
           <Label htmlFor="clientPhone">WhatsApp</Label>
           <StyledInput
@@ -237,8 +324,7 @@ export default function StepClientForm({
           />
           {phoneError && <ErrorText>{phoneError}</ErrorText>}
           <PhoneHint>
-            <WhatsappLogo size={12} />
-            Você receberá a confirmação no WhatsApp
+            💬 Você receberá a confirmação no WhatsApp
           </PhoneHint>
         </FieldGroup>
 

@@ -3,10 +3,6 @@
 import { useEffect, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import {
-  CalendarCheck,
-  CalendarBlank,
-  ChartLine,
-  CheckCircle,
   Clock,
   User,
   Scissors,
@@ -16,6 +12,7 @@ import {
   Phone,
   CurrencyDollar,
   Note,
+  CalendarCheck,
 } from "@phosphor-icons/react";
 import Modal from "@/components/ui/Modal";
 import Badge from "@/components/ui/Badge";
@@ -124,16 +121,29 @@ const MetricCardWrapper = styled.div<{ $index: number }>`
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: 20px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   animation: ${fadeUp} 0.3s ease both;
   animation-delay: ${({ $index }) => $index * 0.07}s;
   transition: border-color 0.15s ease, transform 0.15s ease;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--color-primary), var(--color-primary-dark, #EA6C0A));
+    border-radius: 3px 0 0 3px;
+  }
 
   &:hover {
-    border-color: #3a3a3a;
+    border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
     transform: translateY(-2px);
   }
 `;
@@ -145,11 +155,22 @@ const MetricHeader = styled.div`
 `;
 
 const MetricLabel = styled.span`
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+`;
+
+const MetricIconBox = styled.div`
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: rgba(249,115,22,0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
 `;
 
 const MetricIconWrapper = styled.div<{ $color: string }>`
@@ -178,15 +199,14 @@ const MetricSubtext = styled.div`
 `;
 
 const SectionTitle = styled.h2`
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 800;
   color: var(--color-text);
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+  letter-spacing: -0.3px;
   display: flex;
   align-items: center;
   gap: 8px;
-
-  svg { color: var(--color-primary); }
 `;
 
 const AppointmentList = styled.div`
@@ -199,19 +219,17 @@ const AppointmentItem = styled.div<{ $index: number }>`
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 14px 16px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   animation: ${fadeUp} 0.3s ease both;
   animation-delay: ${({ $index }) => 0.25 + $index * 0.05}s;
-  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, background 0.15s;
   cursor: pointer;
 
   &:hover {
-    border-color: var(--color-primary);
-    transform: translateX(2px);
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    background: var(--color-surface-2);
   }
 
   @media (max-width: 640px) {
@@ -279,18 +297,57 @@ const DetailPriceValue = styled.p`
 `;
 
 const TimeBlock = styled.div`
+  min-width: 42px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-primary);
+  letter-spacing: -0.3px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+`;
+
+const ApptAvatar = styled.div`
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(249,115,22,0.12);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 800;
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-width: 64px;
-  color: var(--color-text-muted);
+  justify-content: center;
+  flex-shrink: 0;
+`;
 
-  span {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-text);
-    font-variant-numeric: tabular-nums;
-  }
+const StatusDotWrap = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+`;
+
+const StatusDot = styled.div<{ $status: string }>`
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: ${({ $status }) => {
+    if ($status === "confirmed") return "#16A34A";
+    if ($status === "completed") return "#16A34A";
+    if ($status === "cancelled") return "#DC2626";
+    return "#D97706";
+  }};
+`;
+
+const StatusText = styled.span<{ $status: string }>`
+  font-size: 11px;
+  font-weight: 700;
+  color: ${({ $status }) => {
+    if ($status === "confirmed") return "#16A34A";
+    if ($status === "completed") return "#16A34A";
+    if ($status === "cancelled") return "#DC2626";
+    return "#D97706";
+  }};
 `;
 
 const AppointmentInfo = styled.div`
@@ -520,10 +577,10 @@ export default function OverviewPage() {
   }
 
   const METRIC_CARDS = [
-    { label: "Hoje", value: String(counts.today), subtext: "agendamentos", icon: CalendarCheck, color: "var(--color-primary)" },
-    { label: "Esta Semana", value: String(counts.week), subtext: "agendamentos", icon: CalendarBlank, color: "#818CF8" },
-    { label: "Este Mês", value: String(counts.month), subtext: "agendamentos", icon: ChartLine, color: "#34D399" },
-    { label: "Comparecimento", value: `${counts.attendance}%`, subtext: "dos agendamentos", icon: CheckCircle, color: "var(--color-success)" },
+    { label: "Hoje",          value: String(counts.today),      subtext: "agendamentos", emoji: "📅" },
+    { label: "Esta Semana",   value: String(counts.week),       subtext: "agendamentos", emoji: "📊" },
+    { label: "Este Mês",      value: String(counts.month),      subtext: "agendamentos", emoji: "✅" },
+    { label: "Comparecimento",value: `${counts.attendance}%`,   subtext: "dos agendamentos", emoji: "👥" },
   ];
 
   return (
@@ -563,28 +620,22 @@ export default function OverviewPage() {
       )}
 
       <MetricsGrid>
-        {METRIC_CARDS.map((card, i) => {
-          const Icon = card.icon;
-          return (
-            <MetricCardWrapper key={card.label} $index={i}>
-              <MetricHeader>
-                <MetricLabel>{card.label}</MetricLabel>
-                <MetricIconWrapper $color={card.color}>
-                  <Icon size={18} weight="fill" />
-                </MetricIconWrapper>
-              </MetricHeader>
-              <div>
-                <MetricValue>{card.value}</MetricValue>
-                <MetricSubtext>{card.subtext}</MetricSubtext>
-              </div>
-            </MetricCardWrapper>
-          );
-        })}
+        {METRIC_CARDS.map((card, i) => (
+          <MetricCardWrapper key={card.label} $index={i}>
+            <MetricHeader>
+              <MetricLabel>{card.label}</MetricLabel>
+              <MetricIconBox>{card.emoji}</MetricIconBox>
+            </MetricHeader>
+            <div>
+              <MetricValue>{card.value}</MetricValue>
+              <MetricSubtext>{card.subtext}</MetricSubtext>
+            </div>
+          </MetricCardWrapper>
+        ))}
       </MetricsGrid>
 
       <SectionTitle>
-        <Clock size={18} weight="fill" />
-        Agendamentos de Hoje
+        📅 Agendamentos de Hoje
       </SectionTitle>
 
       {todayApts.length === 0 ? (
@@ -596,22 +647,27 @@ export default function OverviewPage() {
               hour: "2-digit",
               minute: "2-digit",
             });
+            const initials = apt.client_name
+              .split(" ")
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((w: string) => w[0].toUpperCase())
+              .join("");
             return (
               <AppointmentItem key={apt.id} $index={i} onClick={() => setDetailApt(apt)}>
-                <TimeBlock>
-                  <Clock size={14} />
-                  <span>{time}</span>
-                </TimeBlock>
+                <TimeBlock>{time}</TimeBlock>
+                <ApptAvatar>{initials}</ApptAvatar>
                 <AppointmentInfo>
                   <ClientName>{apt.client_name}</ClientName>
                   <AppointmentMeta>
-                    {apt.service && <><Scissors size={12} />{apt.service.name}</>}
-                    {apt.professional && <><MetaDot /><User size={12} />{apt.professional.name}</>}
+                    {apt.service && <>✂️ {apt.service.name}</>}
+                    {apt.professional && <><MetaDot />👤 {apt.professional.name}</>}
                   </AppointmentMeta>
                 </AppointmentInfo>
-                <StatusBadge $status={apt.status}>
-                  {getStatusLabel(apt.status)}
-                </StatusBadge>
+                <StatusDotWrap>
+                  <StatusDot $status={apt.status} />
+                  <StatusText $status={apt.status}>{getStatusLabel(apt.status)}</StatusText>
+                </StatusDotWrap>
               </AppointmentItem>
             );
           })}
