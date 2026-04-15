@@ -776,15 +776,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
-// ── Named convenience types ───────────────────────────────────────────────────
-export type Business      = Tables<"businesses">
-export type Service       = Tables<"services">
-export type Professional  = Tables<"professionals">
-export type BusinessHours = Tables<"business_hours">
-export type BlockedSlot   = Tables<"blocked_slots">
-
-export type AppointmentWithRelations = Tables<"appointments"> & {
-  service:      Tables<"services">      | null
-  professional: Tables<"professionals"> | null
-}
