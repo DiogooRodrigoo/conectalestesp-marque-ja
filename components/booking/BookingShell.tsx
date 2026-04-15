@@ -626,40 +626,25 @@ function DesktopStepList({
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function BookingShell({ business, services, professionals }: BookingShellProps) {
-  const primaryColor = business.primary_color ?? "#f97316";
+  // Cor sempre fixa no laranja da Conecta Leste — ignora primary_color do estabelecimento
+  const primaryColor = "#F97316";
 
   useEffect(() => {
-    // Booking page sempre em light mode (design do protótipo)
+    // Booking page sempre em light mode
     const prev = document.documentElement.getAttribute("data-theme");
-    document.documentElement.setAttribute("data-theme", "light");
+    document.documentElement.removeAttribute("data-theme");
 
-    const hex = primaryColor.replace("#", "");
-    const rFull = parseInt(hex.slice(0, 2), 16);
-    const gFull = parseInt(hex.slice(2, 4), 16);
-    const bFull = parseInt(hex.slice(4, 6), 16);
-
-    // Dark shade — fórmula do protótipo: #EA6C0A para #F97316
-    const rD = Math.round(rFull * 0.939);
-    const gD = Math.round(gFull * 0.939);
-    const bD = Math.round(bFull * 0.454);
-    const dark = `#${rD.toString(16).padStart(2, "0")}${gD.toString(16).padStart(2, "0")}${bD.toString(16).padStart(2, "0")}`;
-
-    // Hero end stop — tom mais escuro/quente para o final do gradiente hero
-    const rH = Math.round(rFull * 0.803);
-    const gH = Math.round(gFull * 0.696);
-    const bH = Math.round(bFull * 0.227);
-    const heroEnd = `rgba(${rH},${gH},${bH},0.95)`;
-
-    document.documentElement.style.setProperty("--color-primary", primaryColor);
-    document.documentElement.style.setProperty("--color-primary-dark", dark);
-    document.documentElement.style.setProperty("--color-primary-glow", `rgba(${rFull},${gFull},${bFull},0.35)`);
-    document.documentElement.style.setProperty("--color-primary-hero-end", heroEnd);
+    document.documentElement.style.setProperty("--color-primary",          "#F97316");
+    document.documentElement.style.setProperty("--color-primary-dark",     "#EA580C");
+    document.documentElement.style.setProperty("--color-primary-rgb",      "249, 115, 22");
+    document.documentElement.style.setProperty("--color-primary-glow",     "rgba(249,115,22,0.35)");
+    document.documentElement.style.setProperty("--color-primary-hero-end", "rgba(200,90,0,0.95)");
 
     return () => {
       if (prev) document.documentElement.setAttribute("data-theme", prev);
       else document.documentElement.removeAttribute("data-theme");
     };
-  }, [primaryColor]);
+  }, []);
 
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);

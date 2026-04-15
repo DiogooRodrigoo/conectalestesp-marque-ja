@@ -48,6 +48,7 @@ const fadeUp = keyframes`
 const Page = styled.div`
   padding: 28px 32px;
   max-width: 760px;
+  margin: 0 auto;
   animation: ${fadeUp} 0.25s ease both;
   @media (max-width: 640px) { padding: 16px; }
 `;
@@ -63,7 +64,7 @@ const PageSub = styled.p`font-size: 13px; color: var(--color-text-muted); margin
 
 const InfoBanner = styled.div`
   display: flex; align-items: flex-start; gap: 10px;
-  background: rgba(249,115,22,0.06); border: 1px solid rgba(249,115,22,0.2);
+  background: rgba(var(--color-primary-rgb),0.06); border: 1px solid rgba(var(--color-primary-rgb),0.2);
   border-radius: var(--radius-md); padding: 12px 14px;
   margin-top: 20px; margin-bottom: 20px;
   svg { color: var(--color-primary); flex-shrink: 0; margin-top: 1px; }
@@ -79,14 +80,22 @@ const SectionLabel = styled.p`
 const BlockList = styled.div`display: flex; flex-direction: column; gap: 6px; margin-bottom: 28px;`;
 
 const BlockCard = styled.div<{ $index: number; $past: boolean }>`
-  background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: var(--radius-md); padding: 14px 16px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-card);
+  padding: 14px 16px;
   display: flex; align-items: center; gap: 14px;
   animation: ${fadeUp} 0.25s ease both;
   animation-delay: ${({ $index }) => $index * 0.04}s;
-  transition: border-color 0.15s;
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), box-shadow 0.25s cubic-bezier(0.4,0,0.2,1);
   opacity: ${({ $past }) => ($past ? 0.5 : 1)};
-  &:hover { border-color: #3a3a3a; }
+  &:hover {
+    transform: translateY(-4px) scale(1.003);
+    box-shadow: var(--shadow-card-hover);
+  }
 `;
 
 const BlockIconWrap = styled.div<{ $past: boolean }>`
@@ -144,7 +153,7 @@ const Select = styled.select`
   border-radius: var(--radius-sm); color: var(--color-text);
   font-size: 13.5px; font-family: inherit; padding: 0 12px; outline: none; cursor: pointer;
   option { background: var(--color-surface-2); }
-  &:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(249,115,22,0.12); }
+  &:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb),0.12); }
 `;
 
 const TimeRow = styled.div`display: grid; grid-template-columns: 1fr 1fr; gap: 12px;`;
@@ -154,7 +163,7 @@ const TimeInput = styled.input`
   background: var(--color-surface-2); border: 1px solid var(--color-border);
   border-radius: var(--radius-sm); color: var(--color-text);
   font-size: 13.5px; font-family: inherit; padding: 0 12px; outline: none;
-  &:focus { border-color: var(--color-primary); box-shadow: 0 0 0 2px rgba(249,115,22,0.12); }
+  &:focus { border-color: var(--color-primary); box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb),0.12); }
 `;
 
 const LoadingCenter = styled.div`display: flex; align-items: center; justify-content: center; padding: 80px;`;

@@ -124,7 +124,7 @@ const DayCell = styled.button<{
     $selected
       ? "var(--gradient-primary)"
       : $today
-      ? "rgba(249,115,22,0.12)"
+      ? "rgba(var(--color-primary-rgb),0.12)"
       : "transparent"};
   box-shadow: ${({ $selected }) =>
     $selected ? "0 4px 12px var(--color-primary-glow)" : "none"};

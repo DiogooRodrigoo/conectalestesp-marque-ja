@@ -3,6 +3,10 @@
 import { useRef } from "react";
 import styled, { keyframes } from "styled-components";
 import { motion } from "framer-motion";
+import {
+  CheckCircle, CalendarBlank, CalendarCheck,
+  Clock, Scissors, User, WhatsappLogo, Warning,
+} from "@phosphor-icons/react";
 import { Business } from "@/types/database";
 import { CreatedAppointment } from "./BookingShell";
 
@@ -444,7 +448,7 @@ export default function SuccessScreen({ appointment, business, onViewAppointment
       </ConfettiLayer>
 
       <CheckWrapper>
-        <span style={{ fontSize: 36, lineHeight: 1 }}>✅</span>
+        <CheckCircle size={40} weight="fill" color="var(--color-success)" />
       </CheckWrapper>
 
       <SuccessTitle>Agendamento confirmado!</SuccessTitle>
@@ -454,7 +458,7 @@ export default function SuccessScreen({ appointment, business, onViewAppointment
       <TicketCard>
         <TicketMain>
           <SummaryItem>
-            <SummaryIcon>✂️</SummaryIcon>
+            <SummaryIcon><Scissors size={15} weight="bold" /></SummaryIcon>
             <SummaryContent>
               <SummaryLabel>
                 {appointment.services.length === 1 ? "Serviço" : `Serviços (${appointment.services.length})`}
@@ -465,7 +469,7 @@ export default function SuccessScreen({ appointment, business, onViewAppointment
 
           {appointment.professional && (
             <SummaryItem>
-              <SummaryIcon>👤</SummaryIcon>
+              <SummaryIcon><User size={15} weight="bold" /></SummaryIcon>
               <SummaryContent>
                 <SummaryLabel>Profissional</SummaryLabel>
                 <SummaryValue>{appointment.professional.name}</SummaryValue>
@@ -474,7 +478,7 @@ export default function SuccessScreen({ appointment, business, onViewAppointment
           )}
 
           <SummaryItem>
-            <SummaryIcon>📅</SummaryIcon>
+            <SummaryIcon><CalendarBlank size={15} weight="bold" /></SummaryIcon>
             <SummaryContent>
               <SummaryLabel>Data</SummaryLabel>
               <SummaryValue style={{ textTransform: "capitalize" }}>{date}</SummaryValue>
@@ -482,7 +486,7 @@ export default function SuccessScreen({ appointment, business, onViewAppointment
           </SummaryItem>
 
           <SummaryItem>
-            <SummaryIcon>🕘</SummaryIcon>
+            <SummaryIcon><Clock size={15} weight="bold" /></SummaryIcon>
             <SummaryContent>
               <SummaryLabel>Horário</SummaryLabel>
               <SummaryValue>{time}</SummaryValue>
@@ -499,14 +503,14 @@ export default function SuccessScreen({ appointment, business, onViewAppointment
       </TicketCard>
 
       <WhatsAppNote>
-        <WhatsAppIcon>💬</WhatsAppIcon>
+        <WhatsAppIcon><WhatsappLogo size={22} weight="fill" color="#25D366" /></WhatsAppIcon>
         <WhatsAppText>
           Você receberá a <strong>confirmação</strong> pelo WhatsApp.
         </WhatsAppText>
       </WhatsAppNote>
 
       <CancelPolicyBox>
-        <CancelPolicyIcon>⚠️</CancelPolicyIcon>
+        <CancelPolicyIcon><Warning size={18} weight="fill" color="var(--color-warning)" /></CancelPolicyIcon>
         <CancelPolicyText>
           <strong>Precisa cancelar?</strong> Cancelamentos devem ser feitos com no mínimo{" "}
           <strong>30 minutos de antecedência</strong>.{" "}
@@ -519,14 +523,14 @@ export default function SuccessScreen({ appointment, business, onViewAppointment
       <ActionsColumn>
         {whatsappUrl && (
           <WhatsAppConfirmBtn href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-            💬 Confirmar via WhatsApp
+            <WhatsappLogo size={16} weight="fill" /> Confirmar via WhatsApp
           </WhatsAppConfirmBtn>
         )}
         <SecondaryBtn href={calendarUrl} target="_blank" rel="noopener noreferrer">
-          📅 Adicionar ao Calendário
+          <CalendarBlank size={16} weight="bold" /> Adicionar ao Calendário
         </SecondaryBtn>
         <SecondaryBtn as="button" onClick={onViewAppointments}>
-          🗓 Ver meus agendamentos
+          <CalendarCheck size={16} weight="bold" /> Ver meus agendamentos
         </SecondaryBtn>
         <NewBookingLink type="button" onClick={() => window.location.reload()}>
           Novo agendamento

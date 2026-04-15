@@ -44,9 +44,9 @@ const colors: Record<BadgeVariant, { bg: string; text: string; border: string; d
     dot: "#818cf8",
   },
   orange: {
-    bg: "rgba(249,115,22,0.1)",
+    bg: "rgba(var(--color-primary-rgb),0.1)",
     text: "var(--color-primary)",
-    border: "rgba(249,115,22,0.2)",
+    border: "rgba(var(--color-primary-rgb),0.2)",
     dot: "#f97316",
   },
 };

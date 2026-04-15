@@ -27,6 +27,7 @@ const fadeUp = keyframes`
 const Page = styled.div`
   padding: 28px 32px;
   max-width: 680px;
+  margin: 0 auto;
   animation: ${fadeUp} 0.25s ease both;
   @media (max-width: 640px) { padding: 16px; }
 `;
@@ -39,8 +40,8 @@ const AgencyBanner = styled.div`
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  background: rgba(249,115,22,0.05);
-  border: 1px solid rgba(249,115,22,0.15);
+  background: rgba(var(--color-primary-rgb),0.05);
+  border: 1px solid rgba(var(--color-primary-rgb),0.15);
   border-radius: var(--radius-md);
   padding: 14px 16px;
   margin-bottom: 24px;
@@ -66,20 +67,28 @@ const BannerLink = styled.a`
   color: var(--color-primary);
   padding: 4px 10px;
   border-radius: var(--radius-sm);
-  background: rgba(249,115,22,0.08);
-  border: 1px solid rgba(249,115,22,0.15);
+  background: rgba(var(--color-primary-rgb),0.08);
+  border: 1px solid rgba(var(--color-primary-rgb),0.15);
 
-  &:hover { background: rgba(249,115,22,0.14); }
+  &:hover { background: rgba(var(--color-primary-rgb),0.14); }
 `;
 
 const Section = styled.div<{ $delay?: number }>`
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
   margin-bottom: 16px;
   animation: ${fadeUp} 0.25s ease both;
   animation-delay: ${({ $delay }) => $delay ?? 0}s;
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), box-shadow 0.25s cubic-bezier(0.4,0,0.2,1);
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-card-hover);
+  }
 `;
 
 const SectionHeader = styled.div`
@@ -89,7 +98,7 @@ const SectionHeader = styled.div`
 
 const SectionIcon = styled.div`
   width: 30px; height: 30px; border-radius: var(--radius-sm);
-  background: rgba(249,115,22,0.1); color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb),0.1); color: var(--color-primary);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 `;
 
@@ -204,7 +213,8 @@ export default function ConfiguracoesPage() {
   }, [business]);
 
   function handleCopy() {
-    navigator.clipboard.writeText(`https://marqueja.conectalestesp.com.br/${business?.slug}`).catch(() => {});
+    const domain = process.env.NEXT_PUBLIC_APP_DOMAIN ?? "marqueja.conectalestesp.com.br";
+    navigator.clipboard.writeText(`https://${domain}/${business?.slug}`).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -225,12 +235,12 @@ export default function ConfiguracoesPage() {
         <BannerIcon><Info size={16} weight="fill" /></BannerIcon>
         <BannerBody>
           <BannerText>
-            As configurações do seu negócio são gerenciadas pela <strong>Conecta Leste SP</strong>.
+            As configurações do seu negócio são gerenciadas pela <strong>{process.env.NEXT_PUBLIC_SUPPORT_NAME ?? "nossa equipe"}</strong>.
             Para solicitar qualquer alteração — nome, horários, serviços ou aparência —
-            entre em contato diretamente com a agência.
+            entre em contato diretamente conosco.
           </BannerText>
           <BannerLink
-            href="https://wa.me/5511999999999?text=Olá!%20Preciso%20alterar%20as%20configurações%20do%20meu%20negócio%20no%20Marque%20Já"
+            href={`https://wa.me/${process.env.NEXT_PUBLIC_SUPPORT_PHONE ?? "5511999999999"}?text=Olá!%20Preciso%20alterar%20as%20configurações%20do%20meu%20negócio%20no%20Marque%20Já`}
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -293,7 +303,7 @@ export default function ConfiguracoesPage() {
             <FieldLabel>Seu link único</FieldLabel>
             <LinkRow>
               <LinkPreview>
-                <span>marqueja.conectalestesp.com.br/</span>
+                <span>{process.env.NEXT_PUBLIC_APP_DOMAIN ?? "marqueja.conectalestesp.com.br"}/</span>
                 <LinkSlug>{business.slug}</LinkSlug>
               </LinkPreview>
               <CopyBtn $copied={copied} onClick={handleCopy} title="Copiar link">

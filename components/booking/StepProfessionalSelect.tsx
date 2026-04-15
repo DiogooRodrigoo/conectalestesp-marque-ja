@@ -63,7 +63,7 @@ const ProfCard = styled.button<{ $selected: boolean }>`
   border-radius: var(--radius-md);
   border: ${({ $selected }) =>
     $selected
-      ? "1.5px solid rgba(249,115,22,0.28)"
+      ? "1.5px solid rgba(var(--color-primary-rgb),0.28)"
       : "1px solid var(--color-border)"};
   background: ${({ $selected }) =>
     $selected ? "var(--color-primary-subtle)" : "var(--color-surface-2)"};
@@ -87,7 +87,7 @@ const ProfCard = styled.button<{ $selected: boolean }>`
 
   &:hover {
     border-color: ${({ $selected }) =>
-      $selected ? "rgba(249,115,22,0.4)" : "#3a3a3a"};
+      $selected ? "rgba(var(--color-primary-rgb),0.4)" : "#3a3a3a"};
     transform: translateY(-1px);
   }
   &:active { transform: translateY(0); }
@@ -98,7 +98,7 @@ const AvatarCircle = styled.div<{ $any?: boolean }>`
   height: 40px;
   border-radius: 50%;
   background: ${({ $any }) =>
-    $any ? "rgba(249,115,22,0.12)" : "rgba(249,115,22,0.15)"};
+    $any ? "rgba(var(--color-primary-rgb),0.12)" : "rgba(var(--color-primary-rgb),0.15)"};
   display: flex;
   align-items: center;
   justify-content: center;

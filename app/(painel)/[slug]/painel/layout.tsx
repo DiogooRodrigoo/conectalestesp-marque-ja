@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import styled, { keyframes, css } from "styled-components";
 import Link from "next/link";
 import { usePathname, useRouter, useParams } from "next/navigation";
+import {
+  House, CalendarBlank, Tag, Users, ProhibitInset,
+  GearSix, Sun, Moon, SignOut,
+} from "@phosphor-icons/react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { BusinessProvider, useBusiness } from "./BusinessContext";
 import type { BusinessHours } from "@/types/database";
@@ -13,19 +17,19 @@ import type { BusinessHours } from "@/types/database";
 interface NavItem {
   label: string;
   href: string;
-  emoji: string;
+  icon: React.ElementType;
 }
 
 function buildNav(slug: string) {
   const main: NavItem[] = [
-    { label: "Visão Geral",   href: `/${slug}/painel/overview`,      emoji: "🏠" },
-    { label: "Agenda",        href: `/${slug}/painel/agenda`,        emoji: "📅" },
-    { label: "Serviços",      href: `/${slug}/painel/servicos`,      emoji: "✂️" },
-    { label: "Profissionais", href: `/${slug}/painel/profissionais`, emoji: "👥" },
-    { label: "Bloqueios",     href: `/${slug}/painel/bloqueios`,     emoji: "🚫" },
+    { label: "Visão Geral",   href: `/${slug}/painel/overview`,      icon: House },
+    { label: "Agenda",        href: `/${slug}/painel/agenda`,        icon: CalendarBlank },
+    { label: "Serviços",      href: `/${slug}/painel/servicos`,      icon: Tag },
+    { label: "Profissionais", href: `/${slug}/painel/profissionais`, icon: Users },
+    { label: "Bloqueios",     href: `/${slug}/painel/bloqueios`,     icon: ProhibitInset },
   ];
   const system: NavItem[] = [
-    { label: "Configurações", href: `/${slug}/painel/configuracoes`, emoji: "⚙️" },
+    { label: "Configurações", href: `/${slug}/painel/configuracoes`, icon: GearSix },
   ];
   return { main, system };
 }
@@ -54,6 +58,11 @@ function getInitials(name: string) {
 
 // ─── Animations ───────────────────────────────────────────────────────────────
 
+const float = keyframes`
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-4px); }
+`;
+
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateX(-8px); }
   to   { opacity: 1; transform: translateX(0); }
@@ -61,7 +70,7 @@ const fadeIn = keyframes`
 
 const pulseDot = keyframes`
   0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.6); opacity: 0.5; }
+  50%       { transform: scale(1.6); opacity: 0.5; }
 `;
 
 // ─── Styled — Layout root ─────────────────────────────────────────────────────
@@ -69,57 +78,51 @@ const pulseDot = keyframes`
 const LayoutRoot = styled.div`
   display: flex;
   min-height: 100vh;
-  background: var(--color-bg);
 `;
 
 // ─── Styled — Sidebar ─────────────────────────────────────────────────────────
 
 const Sidebar = styled.aside`
-  width: 252px;
-  min-width: 252px;
-  background: var(--color-surface);
-  border-right: 1px solid var(--color-border);
+  width: 88px;
+  min-width: 88px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right: var(--glass-border);
   display: flex;
   flex-direction: column;
+  align-items: center;
   position: sticky;
   top: 0;
   height: 100vh;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   animation: ${fadeIn} 0.25s ease both;
-
-  &::-webkit-scrollbar { display: none; }
+  z-index: 40;
 
   @media (max-width: 768px) { display: none; }
 `;
 
-const SidebarHeader = styled.div`
-  position: relative;
-  padding: 20px 16px 18px;
-  overflow: hidden;
-  border-bottom: 1px solid var(--color-border);
+const SidebarTop = styled.div`
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 11px;
-`;
-
-const SidebarHeaderBg = styled.div`
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(160deg, rgba(249,115,22,0.10) 0%, rgba(249,115,22,0.02) 100%);
-  pointer-events: none;
+  padding: 20px 0 16px;
+  width: 100%;
+  border-bottom: var(--glass-border);
 `;
 
 const LogoBadge = styled.div`
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: var(--gradient-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(249, 115, 22, 0.35), 0 2px 6px rgba(0,0,0,0.12);
+  animation: ${float} 3s ease-in-out infinite;
   overflow: hidden;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
-  box-shadow: 0 4px 16px rgba(249,115,22,0.25), 0 2px 6px rgba(0,0,0,0.15);
-  border: 1.5px solid rgba(249,115,22,0.25);
+  cursor: default;
 `;
 
 const LogoBadgeImg = styled.img`
@@ -129,148 +132,145 @@ const LogoBadgeImg = styled.img`
   display: block;
 `;
 
-const LogoInitials = styled.div<{ $color: string }>`
-  width: 100%;
-  height: 100%;
-  background: ${({ $color }) => $color};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
+const LogoInitials = styled.div`
+  font-size: 17px;
   font-weight: 800;
   color: #fff;
   letter-spacing: -0.5px;
 `;
 
-const LogoText = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  position: relative;
-  z-index: 1;
-`;
-
-const LogoTitle = styled.span`
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--color-text);
-  letter-spacing: -0.3px;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
-const OpenBadge = styled.span<{ $open: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  color: ${({ $open }) => ($open ? "#16A34A" : "#DC2626")};
-  background: ${({ $open }) => ($open ? "rgba(34,197,94,0.10)" : "rgba(239,68,68,0.08)")};
-  border: 1px solid ${({ $open }) => ($open ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.20)")};
-  border-radius: 99px;
-  padding: 2px 7px;
-  width: fit-content;
-`;
-
-const OpenDot = styled.span<{ $open: boolean }>`
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: ${({ $open }) => ($open ? "#16A34A" : "#DC2626")};
-  ${({ $open }) => $open && css`animation: ${pulseDot} 2s ease infinite;`}
-`;
-
 const Nav = styled.nav`
   flex: 1;
-  padding: 14px 10px 8px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-`;
-
-const NavGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  margin-bottom: 4px;
-`;
-
-const NavGroupLabel = styled.span`
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--color-text-muted);
-  opacity: 0.5;
-  padding: 8px 10px 5px;
-  display: block;
+  align-items: center;
+  padding: 14px 0 8px;
+  gap: 4px;
+  width: 100%;
 `;
 
 const NavDivider = styled.div`
+  width: 36px;
   height: 1px;
   background: var(--color-border);
-  margin: 6px 4px 10px;
+  margin: 8px 0;
   opacity: 0.6;
 `;
 
-const NavLink = styled(Link)<{ $active?: boolean }>`
+const NavBtn = styled(Link)<{ $active?: boolean }>`
+  width: 52px;
+  height: 52px;
+  border-radius: 1rem;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 9px 11px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: ${({ $active }) => ($active ? "700" : "500")};
-  color: ${({ $active }) => ($active ? "var(--color-primary)" : "var(--color-text-muted)")};
-  background: ${({ $active }) => ($active ? "color-mix(in srgb, var(--color-primary) 10%, transparent)" : "transparent")};
-  transition: background 0.15s, color 0.15s;
+  justify-content: center;
+  position: relative;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+
+  background: ${({ $active }) =>
+    $active ? "var(--color-primary)" : "transparent"};
+  color: ${({ $active }) =>
+    $active ? "#fff" : "var(--color-text-muted)"};
+  box-shadow: ${({ $active }) =>
+    $active ? "0 4px 16px rgba(249,115,22,0.35)" : "none"};
 
   &:hover {
-    background: ${({ $active }) => ($active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-surface-2)")};
-    color: ${({ $active }) => ($active ? "var(--color-primary)" : "var(--color-text)")};
+    background: ${({ $active }) =>
+      $active ? "var(--color-primary)" : "rgba(249,115,22,0.08)"};
+    color: ${({ $active }) => ($active ? "#fff" : "var(--color-primary)")};
+    transform: scale(1.07);
   }
 `;
 
-const NavEmoji = styled.span`
-  font-size: 15px;
-  flex-shrink: 0;
-  line-height: 1;
+const NavTooltip = styled.span`
+  position: absolute;
+  left: calc(100% + 12px);
+  background: rgba(15, 15, 20, 0.92);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.15s, transform 0.15s;
+  z-index: 99;
+
+  ${NavBtn}:hover & {
+    opacity: 1;
+    transform: translateX(0);
+  }
 `;
 
 const SidebarFooter = styled.div`
-  padding: 8px 10px 14px;
-  border-top: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  align-items: center;
+  padding: 12px 0 18px;
+  gap: 6px;
+  width: 100%;
+  border-top: var(--glass-border);
 `;
 
-const FooterBtn = styled.button`
+const FooterIconBtn = styled.button<{ $danger?: boolean }>`
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 9px 11px;
-  border-radius: 10px;
-  font-size: 13px;
+  justify-content: center;
   color: var(--color-text-muted);
-  width: 100%;
-  transition: background 0.15s, color 0.15s;
-  &:hover { background: var(--color-surface-2); color: var(--color-text); }
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+  position: relative;
+
+  &:hover {
+    background: ${({ $danger }) =>
+      $danger ? "rgba(239,68,68,0.10)" : "rgba(249,115,22,0.08)"};
+    color: ${({ $danger }) =>
+      $danger ? "var(--color-danger)" : "var(--color-primary)"};
+    transform: scale(1.07);
+  }
 `;
 
-const SignOutButton = styled(FooterBtn)`
-  &:hover { background: rgba(239,68,68,0.08); color: var(--color-danger); }
+const FooterTooltip = styled.span`
+  position: absolute;
+  left: calc(100% + 12px);
+  background: rgba(15, 15, 20, 0.92);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.15s, transform 0.15s;
+  z-index: 99;
+
+  ${FooterIconBtn}:hover & {
+    opacity: 1;
+    transform: translateX(0);
+  }
 `;
 
-const FooterEmoji = styled.span`
-  font-size: 14px;
+const AvatarBadge = styled.div`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  box-shadow: 0 0 0 2px rgba(249,115,22,0.3);
   flex-shrink: 0;
-  line-height: 1;
 `;
 
 // ─── Styled — Main ────────────────────────────────────────────────────────────
@@ -295,39 +295,33 @@ const MobileTopBar = styled.header`
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    position: relative;
-    overflow: hidden;
-    border-bottom: 1px solid var(--color-border);
     position: sticky;
     top: 0;
     z-index: 50;
-    background: var(--color-surface);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-bottom: var(--glass-border);
   }
-`;
-
-const MobileTopBarBg = styled.div`
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(160deg, rgba(249,115,22,0.10) 0%, rgba(249,115,22,0.02) 100%);
-  pointer-events: none;
 `;
 
 const MobileTopLeft = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
-  position: relative;
-  z-index: 1;
 `;
 
 const MobileLogoBadge = styled.div`
   width: 34px;
   height: 34px;
-  border-radius: 9px;
+  border-radius: 10px;
+  background: var(--gradient-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(249,115,22,0.3);
   overflow: hidden;
   flex-shrink: 0;
-  box-shadow: 0 3px 10px rgba(249,115,22,0.2), 0 1px 4px rgba(0,0,0,0.1);
-  border: 1.5px solid rgba(249,115,22,0.2);
 `;
 
 const MobileLogoImg = styled.img`
@@ -337,14 +331,8 @@ const MobileLogoImg = styled.img`
   display: block;
 `;
 
-const MobileLogoInitials = styled.div<{ $color: string }>`
-  width: 100%;
-  height: 100%;
-  background: ${({ $color }) => $color};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
+const MobileLogoInitials = styled.div`
+  font-size: 12px;
   font-weight: 800;
   color: #fff;
 `;
@@ -393,8 +381,6 @@ const MobileActions = styled.div`
   display: flex;
   align-items: center;
   gap: 4px;
-  position: relative;
-  z-index: 1;
 `;
 
 const MobileIconBtn = styled.button`
@@ -404,9 +390,12 @@ const MobileIconBtn = styled.button`
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  font-size: 15px;
-  transition: background 0.15s;
-  &:hover { background: var(--color-surface-2); }
+  color: var(--color-text-muted);
+  transition: background 0.15s, color 0.15s;
+  &:hover {
+    background: rgba(249,115,22,0.08);
+    color: var(--color-primary);
+  }
 `;
 
 // ─── Styled — Mobile bottom nav ───────────────────────────────────────────────
@@ -421,8 +410,10 @@ const MobileBottomNav = styled.nav`
     left: 0;
     right: 0;
     z-index: 50;
-    background: var(--color-surface);
-    border-top: 1px solid var(--color-border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-top: var(--glass-border);
     padding: 6px 4px;
     padding-bottom: max(6px, env(safe-area-inset-bottom));
   }
@@ -439,7 +430,7 @@ const MobileNavItem = styled(Link)<{ $active?: boolean }>`
   border-radius: 10px;
   text-decoration: none;
   color: ${({ $active }) => ($active ? "var(--color-primary)" : "var(--color-text-muted)")};
-  background: ${({ $active }) => ($active ? "color-mix(in srgb, var(--color-primary) 8%, transparent)" : "transparent")};
+  background: ${({ $active }) => ($active ? "rgba(249,115,22,0.08)" : "transparent")};
   transition: background 0.15s, color 0.15s;
   position: relative;
 
@@ -458,11 +449,6 @@ const MobileNavItem = styled(Link)<{ $active?: boolean }>`
   `}
 `;
 
-const MobileNavEmoji = styled.span`
-  font-size: 18px;
-  line-height: 1;
-`;
-
 const MobileNavLabel = styled.span`
   font-size: 9.5px;
   font-weight: 600;
@@ -471,34 +457,16 @@ const MobileNavLabel = styled.span`
   white-space: nowrap;
 `;
 
-// ─── Sub-componentes (acessam useBusiness) ────────────────────────────────────
-
-function BusinessColorInjector() {
-  const { business } = useBusiness();
-  useEffect(() => {
-    if (!business?.primary_color) return;
-    const color = business.primary_color;
-    const hex = color.replace("#", "");
-    const r = Math.round(parseInt(hex.slice(0, 2), 16) * 0.939);
-    const g = Math.round(parseInt(hex.slice(2, 4), 16) * 0.939);
-    const b = Math.round(parseInt(hex.slice(4, 6), 16) * 0.454);
-    const dark = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
-    document.documentElement.style.setProperty("--color-primary", color);
-    document.documentElement.style.setProperty("--color-primary-dark", dark);
-  }, [business?.primary_color]);
-  return null;
-}
+// ─── Sidebar logo content ─────────────────────────────────────────────────────
 
 function SidebarLogoContent() {
   const { business } = useBusiness();
   if (!business) return null;
   if (business.logo_url) return <LogoBadgeImg src={business.logo_url} alt={business.name} />;
-  return (
-    <LogoInitials $color={business.primary_color ?? "#F97316"}>
-      {getInitials(business.name)}
-    </LogoInitials>
-  );
+  return <LogoInitials>{getInitials(business.name)}</LogoInitials>;
 }
+
+// ─── Sidebar inner ────────────────────────────────────────────────────────────
 
 function SidebarInner({
   navMain,
@@ -507,7 +475,6 @@ function SidebarInner({
   isDark,
   toggleTheme,
   onSignOut,
-  businessHours,
 }: {
   navMain: NavItem[];
   navSystem: NavItem[];
@@ -515,70 +482,59 @@ function SidebarInner({
   isDark: boolean;
   toggleTheme: () => void;
   onSignOut: () => void;
-  businessHours: BusinessHours[] | null;
 }) {
   const { business } = useBusiness();
-  const status = getBusinessStatus(businessHours);
 
   return (
     <>
-      <SidebarHeader>
-        <SidebarHeaderBg />
+      <SidebarTop>
         <LogoBadge>
           <SidebarLogoContent />
         </LogoBadge>
-        <LogoText>
-          <LogoTitle>{business?.name ?? "Marque Já"}</LogoTitle>
-          <OpenBadge $open={status.isOpen}>
-            <OpenDot $open={status.isOpen} />
-            {status.label}
-          </OpenBadge>
-        </LogoText>
-      </SidebarHeader>
+      </SidebarTop>
 
       <Nav>
-        <NavGroup>
-          <NavGroupLabel>Menu</NavGroupLabel>
-          {navMain.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-            return (
-              <NavLink key={item.href} href={item.href} $active={isActive}>
-                <NavEmoji>{item.emoji}</NavEmoji>
-                {item.label}
-              </NavLink>
-            );
-          })}
-        </NavGroup>
+        {navMain.map((item) => {
+          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          return (
+            <NavBtn key={item.href} href={item.href} $active={isActive}>
+              <item.icon size={22} weight={isActive ? "fill" : "regular"} />
+              <NavTooltip>{item.label}</NavTooltip>
+            </NavBtn>
+          );
+        })}
 
         <NavDivider />
 
-        <NavGroup>
-          <NavGroupLabel>Sistema</NavGroupLabel>
-          {navSystem.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-            return (
-              <NavLink key={item.href} href={item.href} $active={isActive}>
-                <NavEmoji>{item.emoji}</NavEmoji>
-                {item.label}
-              </NavLink>
-            );
-          })}
-        </NavGroup>
+        {navSystem.map((item) => {
+          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          return (
+            <NavBtn key={item.href} href={item.href} $active={isActive}>
+              <item.icon size={22} weight={isActive ? "fill" : "regular"} />
+              <NavTooltip>{item.label}</NavTooltip>
+            </NavBtn>
+          );
+        })}
       </Nav>
 
       <SidebarFooter>
-        <FooterBtn onClick={toggleTheme}>
-          <FooterEmoji>{isDark ? "☀️" : "🌙"}</FooterEmoji>
-          {isDark ? "Modo Claro" : "Modo Escuro"}
-        </FooterBtn>
-        <SignOutButton onClick={onSignOut}>
-          <FooterEmoji>🚪</FooterEmoji>
-          Sair da conta
-        </SignOutButton>
+        <FooterIconBtn onClick={toggleTheme}>
+          {isDark ? <Sun size={20} weight="fill" /> : <Moon size={20} weight="fill" />}
+          <FooterTooltip>{isDark ? "Modo claro" : "Modo escuro"}</FooterTooltip>
+        </FooterIconBtn>
+        <FooterIconBtn $danger onClick={onSignOut}>
+          <SignOut size={20} />
+          <FooterTooltip>Sair da conta</FooterTooltip>
+        </FooterIconBtn>
+        <AvatarBadge title={business?.name ?? ""}>
+          {business ? getInitials(business.name) : "MJ"}
+        </AvatarBadge>
       </SidebarFooter>
     </>
   );
 }
+
+// ─── Mobile header ────────────────────────────────────────────────────────────
 
 function MobileHeader({
   isDark,
@@ -596,13 +552,12 @@ function MobileHeader({
 
   return (
     <MobileTopBar>
-      <MobileTopBarBg />
       <MobileTopLeft>
         <MobileLogoBadge>
           {business?.logo_url ? (
             <MobileLogoImg src={business.logo_url} alt={business.name} />
           ) : (
-            <MobileLogoInitials $color={business?.primary_color ?? "#F97316"}>
+            <MobileLogoInitials>
               {business ? getInitials(business.name) : "MJ"}
             </MobileLogoInitials>
           )}
@@ -617,10 +572,10 @@ function MobileHeader({
       </MobileTopLeft>
       <MobileActions>
         <MobileIconBtn onClick={toggleTheme} aria-label={isDark ? "Modo claro" : "Modo escuro"}>
-          {isDark ? "☀️" : "🌙"}
+          {isDark ? <Sun size={18} weight="fill" /> : <Moon size={18} weight="fill" />}
         </MobileIconBtn>
         <MobileIconBtn onClick={onSignOut} aria-label="Sair">
-          🚪
+          <SignOut size={18} />
         </MobileIconBtn>
       </MobileActions>
     </MobileTopBar>
@@ -634,17 +589,17 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
   const router = useRouter();
   const params = useParams();
   const slug = params.slug as string;
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(false);
   const [businessHours, setBusinessHours] = useState<BusinessHours[] | null>(null);
 
   const { main: NAV_MAIN, system: NAV_SYSTEM } = buildNav(slug);
 
   const MOBILE_NAV: NavItem[] = [
-    { label: "Início",   href: `/${slug}/painel/overview`,      emoji: "🏠" },
-    { label: "Agenda",   href: `/${slug}/painel/agenda`,        emoji: "📅" },
-    { label: "Serviços", href: `/${slug}/painel/servicos`,      emoji: "✂️" },
-    { label: "Equipe",   href: `/${slug}/painel/profissionais`, emoji: "👥" },
-    { label: "Config",   href: `/${slug}/painel/configuracoes`, emoji: "⚙️" },
+    { label: "Início",   href: `/${slug}/painel/overview`,      icon: House },
+    { label: "Agenda",   href: `/${slug}/painel/agenda`,        icon: CalendarBlank },
+    { label: "Serviços", href: `/${slug}/painel/servicos`,      icon: Tag },
+    { label: "Equipe",   href: `/${slug}/painel/profissionais`, icon: Users },
+    { label: "Config",   href: `/${slug}/painel/configuracoes`, icon: GearSix },
   ];
 
   async function handleSignOut() {
@@ -653,14 +608,9 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
   }
 
   useEffect(() => {
-    const saved = localStorage.getItem("mj_theme");
-    if (saved === "light") {
-      setIsDark(false);
-      document.documentElement.setAttribute("data-theme", "light");
-    } else {
-      setIsDark(true);
-      document.documentElement.removeAttribute("data-theme");
-    }
+    // Sempre inicia em modo claro
+    setIsDark(false);
+    document.documentElement.removeAttribute("data-theme");
   }, []);
 
   useEffect(() => {
@@ -688,17 +638,16 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
     const next = !isDark;
     setIsDark(next);
     if (next) {
-      document.documentElement.removeAttribute("data-theme");
+      document.documentElement.setAttribute("data-theme", "dark");
       localStorage.setItem("mj_theme", "dark");
     } else {
-      document.documentElement.setAttribute("data-theme", "light");
-      localStorage.setItem("mj_theme", "light");
+      document.documentElement.removeAttribute("data-theme");
+      localStorage.setItem("mj_theme", "");
     }
   }
 
   return (
     <BusinessProvider>
-      <BusinessColorInjector />
       <LayoutRoot>
 
         {/* ── Sidebar desktop ── */}
@@ -710,7 +659,6 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
             isDark={isDark}
             toggleTheme={toggleTheme}
             onSignOut={handleSignOut}
-            businessHours={businessHours}
           />
         </Sidebar>
 
@@ -733,7 +681,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <MobileNavItem key={item.href} href={item.href} $active={isActive}>
-              <MobileNavEmoji>{item.emoji}</MobileNavEmoji>
+              <item.icon size={22} weight={isActive ? "fill" : "regular"} />
               <MobileNavLabel>{item.label}</MobileNavLabel>
             </MobileNavItem>
           );

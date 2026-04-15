@@ -69,14 +69,14 @@ const OtpInput = styled.input<{ $hasError: boolean; $filled: boolean }>`
   font-weight: 800;
   border-radius: 14px;
   background: ${({ $hasError, $filled }) =>
-    $hasError ? "var(--color-surface-2)" : $filled ? "rgba(249,115,22,0.04)" : "var(--color-surface-2)"};
+    $hasError ? "var(--color-surface-2)" : $filled ? "rgba(var(--color-primary-rgb),0.04)" : "var(--color-surface-2)"};
   border: 1.5px solid ${({ $hasError, $filled }) =>
     $hasError ? "var(--color-danger)" : $filled ? "var(--color-primary)" : "var(--color-border)"};
   box-shadow: ${({ $hasError, $filled }) =>
     $hasError
       ? "0 0 0 3px rgba(239,68,68,0.12)"
       : $filled
-      ? "0 0 0 3px rgba(249,115,22,0.12)"
+      ? "0 0 0 3px rgba(var(--color-primary-rgb),0.12)"
       : "none"};
   color: var(--color-text);
   outline: none;
@@ -89,7 +89,7 @@ const OtpInput = styled.input<{ $hasError: boolean; $filled: boolean }>`
     box-shadow: ${({ $hasError }) =>
       $hasError
         ? "0 0 0 3px rgba(239,68,68,0.12)"
-        : "0 0 0 3px rgba(249,115,22,0.14)"};
+        : "0 0 0 3px rgba(var(--color-primary-rgb),0.14)"};
   }
 `;
 

@@ -1,6 +1,7 @@
 "use client";
 
 import styled, { keyframes } from "styled-components";
+import { CalendarBlank, Clock } from "@phosphor-icons/react";
 import { Business, BusinessHours } from "@/types/database";
 
 interface Props {
@@ -140,7 +141,7 @@ export default function StepLanding({ onBook, onViewAppointments }: Props) {
     <Container>
       <ButtonsWrapper>
         <PrimaryButton onClick={handleBook}>
-          <IconBox>📅</IconBox>
+          <IconBox><CalendarBlank size={20} weight="fill" /></IconBox>
           <ButtonLabel>
             <ButtonTitle>Agendar serviço</ButtonTitle>
             <ButtonSub>Escolha data, horário e profissional</ButtonSub>
@@ -148,7 +149,7 @@ export default function StepLanding({ onBook, onViewAppointments }: Props) {
         </PrimaryButton>
 
         <SecondaryButton onClick={handleView}>
-          <IconBoxMuted>🕐</IconBoxMuted>
+          <IconBoxMuted><Clock size={20} weight="fill" /></IconBoxMuted>
           <ButtonLabel>
             <ButtonTitle>Meus agendamentos</ButtonTitle>
             <ButtonSub>Ver histórico e próximos horários</ButtonSub>

@@ -31,28 +31,31 @@ const sizeStyles = {
     padding: 0 16px;
     font-size: 13.5px;
     gap: 8px;
-    border-radius: var(--radius-sm);
+    border-radius: 12px;
   `,
   lg: css`
     height: 48px;
     padding: 0 20px;
     font-size: 15px;
     gap: 10px;
-    border-radius: var(--radius-md);
+    border-radius: 16px;
   `,
 };
 
 const variantStyles = {
   primary: css`
-    background: var(--color-primary);
+    background: var(--gradient-primary);
     color: #fff;
     border: 1px solid transparent;
+    box-shadow: var(--shadow-btn);
 
     &:hover:not(:disabled) {
-      background: var(--color-primary-dark);
+      box-shadow: 0 6px 28px rgba(249, 115, 22, 0.50), 0 2px 6px rgba(0,0,0,0.12);
+      transform: translateY(-1px);
     }
     &:active:not(:disabled) {
       transform: scale(0.98);
+      box-shadow: var(--shadow-btn);
     }
   `,
   secondary: css`

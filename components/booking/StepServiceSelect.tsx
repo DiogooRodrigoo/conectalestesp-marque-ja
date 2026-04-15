@@ -53,7 +53,7 @@ const ServiceCard = styled.button<{ $selected: boolean }>`
   border-radius: var(--radius-md);
   border: ${({ $selected }) =>
     $selected
-      ? "1.5px solid rgba(249,115,22,0.28)"
+      ? "1.5px solid rgba(var(--color-primary-rgb),0.28)"
       : "1px solid var(--color-border)"};
   background: ${({ $selected }) =>
     $selected ? "var(--color-primary-subtle)" : "var(--color-surface-2)"};
@@ -77,7 +77,7 @@ const ServiceCard = styled.button<{ $selected: boolean }>`
   &:hover {
     transform: translateY(-1px);
     border-color: ${({ $selected }) =>
-      $selected ? "rgba(249,115,22,0.4)" : "#a0a0a0"};
+      $selected ? "rgba(var(--color-primary-rgb),0.4)" : "#a0a0a0"};
   }
   &:active { transform: translateY(0); }
 `;
@@ -109,8 +109,8 @@ const PopularBadge = styled.span`
   font-size: 10px;
   font-weight: 700;
   color: var(--color-primary);
-  background: rgba(249, 115, 22, 0.1);
-  border: 1px solid rgba(249, 115, 22, 0.25);
+  background: rgba(var(--color-primary-rgb), 0.1);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.25);
   border-radius: 99px;
   padding: 2px 7px;
   white-space: nowrap;
@@ -177,11 +177,11 @@ const Price = styled.span`
 // ─── Footer de total ──────────────────────────────────────────────────────────
 
 const TotalFooter = styled.div`
-  border: 1px solid rgba(249,115,22,0.18);
+  border: 1px solid rgba(var(--color-primary-rgb),0.18);
   border-radius: var(--radius-md);
   padding: 14px 16px;
   margin-bottom: 14px;
-  background: linear-gradient(135deg, rgba(249,115,22,0.07) 0%, rgba(249,115,22,0.02) 100%);
+  background: linear-gradient(135deg, rgba(var(--color-primary-rgb),0.07) 0%, rgba(var(--color-primary-rgb),0.02) 100%);
   display: flex;
   flex-direction: column;
   gap: 8px;

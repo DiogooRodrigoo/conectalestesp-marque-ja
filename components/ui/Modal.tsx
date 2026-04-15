@@ -42,16 +42,23 @@ const Overlay = styled.div`
 const sizeWidths = { sm: "400px", md: "520px", lg: "680px" };
 
 const Dialog = styled.div<{ $size: "sm" | "md" | "lg" }>`
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.60);
+  border-radius: var(--radius-2xl);
   width: 100%;
   max-width: ${({ $size }) => sizeWidths[$size]};
   max-height: calc(100dvh - 40px);
   display: flex;
   flex-direction: column;
   animation: ${slideUp} 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255,255,255,0.04);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18), 0 4px 16px rgba(0, 0, 0, 0.08);
+
+  [data-theme="dark"] & {
+    background: rgba(24, 24, 30, 0.90);
+    border-color: rgba(255, 255, 255, 0.07);
+  }
 `;
 
 const Header = styled.div`

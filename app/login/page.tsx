@@ -6,7 +6,7 @@ import { Raleway } from "next/font/google";
 import styled, { keyframes } from "styled-components";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import {
-  Scissors,
+  Tag,
   Wrench,
   Tooth,
   Stethoscope,
@@ -626,8 +626,8 @@ export default function LoginPage() {
           <ProfCard $top="9%" $left="8%" $variant="a" $delay={0}>
             <ProfAvatar>✂️</ProfAvatar>
             <ProfInfo>
-              <ProfName>Barbeiro</ProfName>
-              <ProfSub>Corte & Barba</ProfSub>
+              <ProfName>Cabeleireiro</ProfName>
+              <ProfSub>Corte & Estilo</ProfSub>
             </ProfInfo>
           </ProfCard>
 
@@ -689,7 +689,7 @@ export default function LoginPage() {
               <CardValue>Gerencie sua equipe</CardValue>
             </FeatureCard>
             <FeatureCard>
-              <CardIcon><Scissors size={15} weight="fill" /></CardIcon>
+              <CardIcon><Tag size={15} weight="fill" /></CardIcon>
               <CardLabel>Serviços</CardLabel>
               <CardValue>Catálogo completo</CardValue>
             </FeatureCard>

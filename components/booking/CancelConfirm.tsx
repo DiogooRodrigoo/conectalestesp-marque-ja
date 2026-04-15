@@ -5,7 +5,7 @@ import styled, { keyframes } from "styled-components";
 import {
   Warning,
   CalendarX,
-  Scissors,
+  Tag,
   User,
   CalendarBlank,
   Clock,
@@ -355,7 +355,7 @@ export default function CancelConfirm({
             <SummaryBox>
               <SummaryItem>
                 <SummaryIcon $color={businessColor}>
-                  <Scissors size={15} />
+                  <Tag size={15} />
                 </SummaryIcon>
                 <SummaryContent>
                   <SummaryLabel>Serviço</SummaryLabel>

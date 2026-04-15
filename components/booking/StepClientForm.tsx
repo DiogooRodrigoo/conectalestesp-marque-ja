@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import styled from "styled-components";
+import { CalendarBlank, Clock, Scissors } from "@phosphor-icons/react";
 
 interface BookingSummary {
   serviceNames: string[];
@@ -44,8 +45,8 @@ const BackButton = styled.button`
 // ── Mini summary ──────────────────────────────────────────────────────────────
 
 const SummaryCard = styled.div`
-  background: linear-gradient(135deg, rgba(249,115,22,0.07) 0%, rgba(249,115,22,0.02) 100%);
-  border: 1px solid rgba(249,115,22,0.2);
+  background: linear-gradient(135deg, rgba(var(--color-primary-rgb),0.07) 0%, rgba(var(--color-primary-rgb),0.02) 100%);
+  border: 1px solid rgba(var(--color-primary-rgb),0.2);
   border-left: 4px solid var(--color-primary);
   border-radius: var(--radius-md);
   padding: 12px 14px;
@@ -133,7 +134,7 @@ const StyledInput = styled.input<{ $hasError: boolean }>`
     box-shadow: ${({ $hasError }) =>
       $hasError
         ? "0 0 0 3px rgba(239,68,68,0.12)"
-        : "0 0 0 3px rgba(249,115,22,0.12)"};
+        : "0 0 0 3px rgba(var(--color-primary-rgb),0.12)"};
   }
 `;
 
@@ -269,13 +270,13 @@ export default function StepClientForm({
         <SummaryCard>
           {summary.serviceNames.length > 0 && (
             <SummaryRow>
-              <SummaryIcon>✂️</SummaryIcon>
+              <SummaryIcon><Scissors size={14} weight="bold" /></SummaryIcon>
               <SummaryText>{summary.serviceNames.join(" + ")}</SummaryText>
             </SummaryRow>
           )}
           {summary.date && (
             <SummaryRow>
-              <SummaryIcon>📅</SummaryIcon>
+              <SummaryIcon><CalendarBlank size={14} weight="bold" /></SummaryIcon>
               <SummaryText style={{ textTransform: "capitalize" }}>
                 {formatDatePretty(summary.date)}
               </SummaryText>
@@ -283,7 +284,7 @@ export default function StepClientForm({
           )}
           {summary.time && (
             <SummaryRow>
-              <SummaryIcon>🕘</SummaryIcon>
+              <SummaryIcon><Clock size={14} weight="bold" /></SummaryIcon>
               <SummaryText>{summary.time}</SummaryText>
             </SummaryRow>
           )}

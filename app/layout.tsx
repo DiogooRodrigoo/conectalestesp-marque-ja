@@ -23,6 +23,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
+      <head>
+        <link
+          href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body className={font.className}>
         <StyledComponentsRegistry>
           <GlobalStyle />

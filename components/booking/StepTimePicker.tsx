@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import styled, { keyframes } from "styled-components";
+import { CalendarBlank } from "@phosphor-icons/react";
 
 interface Props {
   businessId: string;
@@ -364,7 +365,7 @@ export default function StepTimePicker({
 
       {!loading && error && (
         <EmptyState>
-          <EmptyIcon style={{ fontSize: 36 }}>📅</EmptyIcon>
+          <EmptyIcon><CalendarBlank size={36} weight="thin" /></EmptyIcon>
           <EmptyText>Não foi possível carregar os horários.</EmptyText>
           <EmptyHint>Tente voltar e selecionar outra data.</EmptyHint>
         </EmptyState>
@@ -372,7 +373,7 @@ export default function StepTimePicker({
 
       {!loading && !error && slots.length === 0 && (
         <EmptyState>
-          <EmptyIcon style={{ fontSize: 36 }}>📅</EmptyIcon>
+          <EmptyIcon><CalendarBlank size={36} weight="thin" /></EmptyIcon>
           <EmptyText>Nenhum horário disponível</EmptyText>
           <EmptyHint>Tente voltar e escolher outra data.</EmptyHint>
         </EmptyState>

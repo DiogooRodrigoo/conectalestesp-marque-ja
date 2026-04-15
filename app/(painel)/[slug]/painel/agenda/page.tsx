@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import styled, { keyframes, css } from "styled-components";
 import {
   CaretLeft, CaretRight, CalendarBlank, Clock,
-  User, Scissors, Phone, CheckCircle, Plus, CalendarCheck,
+  User, Tag, Phone, CheckCircle, Plus, CalendarCheck,
   X, CurrencyDollar, Note,
 } from "@phosphor-icons/react";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -56,7 +56,7 @@ type AptStatus = "confirmed" | "pending" | "completed" | "cancelled" | "no_show"
 const statusMap: Record<AptStatus, { label: string; variant: "success" | "orange" | "default" | "danger" | "warning" }> = {
   confirmed: { label: "Confirmado", variant: "orange" },
   pending:   { label: "Pendente",   variant: "default" },
-  completed: { label: "Pago",       variant: "success" },
+  completed: { label: "Concluído",   variant: "success" },
   cancelled: { label: "Cancelado",  variant: "danger" },
   no_show:   { label: "Faltou",     variant: "warning" },
 };
@@ -64,7 +64,7 @@ const statusMap: Record<AptStatus, { label: string; variant: "success" | "orange
 const STATUS_OPTIONS: { value: AptStatus; label: string }[] = [
   { value: "pending",   label: "Pendente" },
   { value: "confirmed", label: "Confirmado" },
-  { value: "completed", label: "Pago" },
+  { value: "completed", label: "Concluído" },
 ];
 
 // ─── Animations ───────────────────────────────────────────────────────────────
@@ -79,6 +79,7 @@ const fadeUp = keyframes`
 const Page = styled.div`
   padding: 28px 32px;
   max-width: 960px;
+  margin: 0 auto;
   animation: ${fadeUp} 0.25s ease both;
   @media (max-width: 640px) { padding: 16px; }
 `;
@@ -103,9 +104,12 @@ const WeekNav = styled.div`
   display: flex;
   align-items: center;
   gap: 4px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
   padding: 6px;
   margin-bottom: 24px;
 `;
@@ -185,9 +189,12 @@ const StatsRow = styled.div`
 `;
 
 const StatPill = styled.div`
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-card);
   padding: 12px 16px;
   display: flex;
   align-items: center;
@@ -244,15 +251,18 @@ const List = styled.div`
 `;
 
 const AptCard = styled.div<{ $index: number; $status: string }>`
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
   border-left: 3px solid ${({ $status }) => {
     if ($status === "completed") return "var(--color-success)";
     if ($status === "confirmed") return "var(--color-primary)";
     if ($status === "cancelled") return "var(--color-danger)";
-    return "var(--color-border)";
+    return "rgba(255,255,255,0.3)";
   }};
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-card);
   padding: 14px 16px;
   display: grid;
   grid-template-columns: 56px 1fr auto;
@@ -260,13 +270,12 @@ const AptCard = styled.div<{ $index: number; $status: string }>`
   gap: 16px;
   animation: ${fadeUp} 0.25s ease both;
   animation-delay: ${({ $index }) => $index * 0.04}s;
-  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), box-shadow 0.25s cubic-bezier(0.4,0,0.2,1);
   opacity: ${({ $status }) => ($status === "cancelled" ? 0.55 : 1)};
   cursor: pointer;
   &:hover {
-    transform: translateX(2px);
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    border-color: var(--color-primary);
+    transform: translateY(-4px) scale(1.003);
+    box-shadow: var(--shadow-card-hover);
   }
   @media (max-width: 600px) { grid-template-columns: 48px 1fr; }
 `;
@@ -360,10 +369,12 @@ const StatusMenuEl = styled.div<{ $top: number; $right: number }>`
   position: fixed;
   top: ${({ $top }) => $top}px;
   right: ${({ $right }) => $right}px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  background: rgba(255, 255, 255, 0.90);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.60);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
   z-index: 9999;
   min-width: 152px;
   overflow: hidden;
@@ -379,7 +390,7 @@ const StatusOptionBtn = styled.button<{ $active: boolean }>`
   cursor: pointer;
   color: ${({ $active }) => ($active ? "var(--color-primary)" : "var(--color-text)")};
   font-weight: ${({ $active }) => ($active ? "600" : "400")};
-  background: ${({ $active }) => ($active ? "rgba(249,115,22,0.06)" : "transparent")};
+  background: ${({ $active }) => ($active ? "rgba(var(--color-primary-rgb),0.06)" : "transparent")};
   transition: background 0.15s;
   &:hover { background: var(--color-surface-2); }
 `;
@@ -504,7 +515,7 @@ const FieldInput = styled.input`
 
   &:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb),0.12);
   }
 `;
 
@@ -523,7 +534,7 @@ const FieldSelect = styled.select`
 
   &:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb),0.12);
   }
 `;
 
@@ -544,7 +555,7 @@ const FieldTextarea = styled.textarea`
 
   &:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb),0.12);
   }
 `;
 
@@ -775,7 +786,7 @@ export default function AgendaPage() {
           <div><StatValue>{pending}</StatValue><StatLabel>Pendentes</StatLabel></div>
         </StatPill>
         <StatPill>
-          <StatIcon $color="#34d399"><Scissors size={16} weight="fill" /></StatIcon>
+          <StatIcon $color="#34d399"><Tag size={16} weight="fill" /></StatIcon>
           <div><StatValue>{formatCurrency(revenue)}</StatValue><StatLabel>Faturado</StatLabel></div>
         </StatPill>
       </StatsRow>
@@ -816,7 +827,7 @@ export default function AgendaPage() {
                   <AptDetails>
                     <ClientName>{apt.client_name}</ClientName>
                     <MetaRow>
-                      {apt.service && <MetaItem><Scissors size={11} />{apt.service.name}</MetaItem>}
+                      {apt.service && <MetaItem><Tag size={11} />{apt.service.name}</MetaItem>}
                       {apt.professional && <><MetaDot /><MetaItem><User size={11} />{apt.professional.name}</MetaItem></>}
                       {apt.client_phone && <><MetaDot /><MetaItem><Phone size={11} />{apt.client_phone}</MetaItem></>}
                     </MetaRow>
@@ -928,7 +939,7 @@ export default function AgendaPage() {
 
               {apt.service && (
                 <DetailRow>
-                  <DetailIcon><Scissors size={16} weight="fill" /></DetailIcon>
+                  <DetailIcon><Tag size={16} weight="fill" /></DetailIcon>
                   <DetailContent>
                     <DetailLabel>Serviço</DetailLabel>
                     <DetailValue>{apt.service.name}</DetailValue>

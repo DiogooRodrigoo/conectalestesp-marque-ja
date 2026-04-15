@@ -6,7 +6,7 @@ import {
   ArrowLeft,
   CalendarCheck,
   Clock,
-  Scissors,
+  Tag,
   User,
   Phone,
   Spinner,
@@ -119,8 +119,8 @@ const ServiceTag = styled.span`
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(249, 115, 22, 0.1);
-  border: 1px solid rgba(249, 115, 22, 0.2);
+  background: rgba(var(--color-primary-rgb), 0.1);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
   border-radius: 6px;
   padding: 2px 8px;
   font-size: 12px;
@@ -416,7 +416,7 @@ export default function StepConfirmation({
         {/* Serviços selecionados */}
         <SummaryRow>
           <RowIcon>
-            <Scissors size={16} />
+            <Tag size={16} />
           </RowIcon>
           <RowContent>
             <RowLabel>

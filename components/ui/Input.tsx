@@ -73,7 +73,7 @@ const StyledInput = styled.input<{ $hasError: boolean; $hasIcon: boolean; $hasIc
   &:focus {
     border-color: ${({ $hasError }) => ($hasError ? "var(--color-danger)" : "var(--color-primary)")};
     box-shadow: 0 0 0 3px ${({ $hasError }) =>
-      $hasError ? "rgba(239,68,68,0.12)" : "rgba(249,115,22,0.12)"};
+      $hasError ? "rgba(239,68,68,0.12)" : "rgba(var(--color-primary-rgb),0.12)"};
   }
 
   &:disabled {

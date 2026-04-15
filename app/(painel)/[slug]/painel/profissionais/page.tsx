@@ -46,6 +46,7 @@ const fadeUp = keyframes`
 const Page = styled.div`
   padding: 28px 32px;
   max-width: 760px;
+  margin: 0 auto;
   animation: ${fadeUp} 0.25s ease both;
   @media (max-width: 640px) { padding: 16px; }
 `;
@@ -66,15 +67,21 @@ const PageSub = styled.p`font-size: 13px; color: var(--color-text-muted); margin
 const ProfList = styled.div`display: flex; flex-direction: column; gap: 12px;`;
 
 const ProfCard = styled.div<{ $index: number; $inactive: boolean }>`
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-card);
   padding: 20px 20px 16px;
   animation: ${fadeUp} 0.25s ease both;
   animation-delay: ${({ $index }) => $index * 0.07}s;
-  transition: border-color 0.15s;
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), box-shadow 0.25s cubic-bezier(0.4,0,0.2,1);
   opacity: ${({ $inactive }) => ($inactive ? 0.55 : 1)};
-  &:hover { border-color: #3a3a3a; }
+  &:hover {
+    transform: translateY(-4px) scale(1.003);
+    box-shadow: var(--shadow-card-hover);
+  }
 `;
 
 const ProfHeader = styled.div`display: flex; align-items: center; gap: 14px;`;
@@ -117,8 +124,8 @@ const ScheduleGrid = styled.div`
 const DayChip = styled.div<{ $active: boolean }>`
   display: flex; flex-direction: column; align-items: center; padding: 7px 4px;
   border-radius: var(--radius-sm);
-  border: 1px solid ${({ $active }) => $active ? "rgba(249,115,22,0.28)" : "var(--color-border)"};
-  background: ${({ $active }) => $active ? "rgba(249,115,22,0.07)" : "rgba(0,0,0,0.01)"};
+  border: 1px solid ${({ $active }) => $active ? "rgba(var(--color-primary-rgb),0.28)" : "var(--color-border)"};
+  background: ${({ $active }) => $active ? "rgba(var(--color-primary-rgb),0.07)" : "rgba(0,0,0,0.01)"};
 `;
 
 const DayLabel = styled.span<{ $active: boolean }>`
@@ -157,7 +164,7 @@ const TimeInput = styled.input`
   background: var(--color-surface-2); border: 1px solid var(--color-border);
   border-radius: var(--radius-sm); color: var(--color-text);
   font-size: 12.5px; font-family: inherit; padding: 0 10px; outline: none;
-  &:focus { border-color: var(--color-primary); box-shadow: 0 0 0 2px rgba(249,115,22,0.12); }
+  &:focus { border-color: var(--color-primary); box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb),0.12); }
   &:disabled { opacity: 0.3; cursor: not-allowed; }
 `;
 

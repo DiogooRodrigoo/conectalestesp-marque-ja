@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import {
-  Plus, Scissors, Clock, CurrencyDollar,
+  Plus, Tag, Clock, CurrencyDollar,
   PencilSimple, Trash, ToggleLeft, ToggleRight,
 } from "@phosphor-icons/react";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -50,6 +50,7 @@ const fadeUp = keyframes`
 const Page = styled.div`
   padding: 28px 32px;
   max-width: 760px;
+  margin: 0 auto;
   animation: ${fadeUp} 0.25s ease both;
   @media (max-width: 640px) { padding: 16px; }
 `;
@@ -84,25 +85,31 @@ const ServiceList = styled.div`
 `;
 
 const ServiceCard = styled.div<{ $index: number; $inactive: boolean }>`
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-card);
   padding: 16px;
   display: flex;
   align-items: center;
   gap: 14px;
   animation: ${fadeUp} 0.25s ease both;
   animation-delay: ${({ $index }) => $index * 0.05}s;
-  transition: border-color 0.15s;
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), box-shadow 0.25s cubic-bezier(0.4,0,0.2,1);
   opacity: ${({ $inactive }) => ($inactive ? 0.55 : 1)};
-  &:hover { border-color: #3a3a3a; }
+  &:hover {
+    transform: translateY(-4px) scale(1.003);
+    box-shadow: var(--shadow-card-hover);
+  }
 `;
 
 const ServiceIcon = styled.div`
   width: 38px;
   height: 38px;
   border-radius: var(--radius-sm);
-  background: rgba(249,115,22,0.1);
+  background: rgba(var(--color-primary-rgb),0.1);
   color: var(--color-primary);
   display: flex;
   align-items: center;
@@ -301,7 +308,7 @@ export default function ServicosPage() {
       <ServiceList>
         {services.map((svc, i) => (
           <ServiceCard key={svc.id} $index={i} $inactive={!svc.is_active}>
-            <ServiceIcon><Scissors size={18} weight="fill" /></ServiceIcon>
+            <ServiceIcon><Tag size={18} weight="fill" /></ServiceIcon>
             <ServiceInfo>
               <ServiceName>{svc.name}</ServiceName>
               <ServiceMeta>
@@ -338,7 +345,7 @@ export default function ServicosPage() {
         }
       >
         <FormGrid>
-          <Input label="Nome do serviço" placeholder="Ex: Corte Social" value={form.name}
+          <Input label="Nome do serviço" placeholder="Ex: Corte de cabelo, Consulta, Revisão..." value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} fullWidth />
           <FormRow>
             <Input label="Duração (min)" type="number" min={5} step={5} icon={<Clock size={15} />}

@@ -6,7 +6,7 @@ import {
   ArrowLeft,
   CalendarBlank,
   Clock,
-  Scissors,
+  Tag,
   User,
   CheckCircle,
   XCircle,
@@ -193,7 +193,7 @@ function statusColor(status: string): string {
 
 function statusBg(status: string): string {
   switch (status) {
-    case "confirmed": return "rgba(249,115,22,0.12)";
+    case "confirmed": return "rgba(var(--color-primary-rgb),0.12)";
     case "completed": return "rgba(34,197,94,0.12)";
     case "cancelled": return "rgba(239,68,68,0.12)";
     case "no_show":   return "rgba(239,68,68,0.12)";
