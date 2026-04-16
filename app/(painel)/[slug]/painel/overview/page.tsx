@@ -330,7 +330,7 @@ const AppointmentItem = styled(GlassCard)<{ $index: number }>`
 
   &:hover { background: rgba(255,255,255,0.85); }
 
-  @media (max-width: 640px) { flex-wrap: wrap; gap: 10px; }
+  @media (max-width: 640px) { gap: 8px; padding: 10px 12px; }
 `;
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
@@ -376,6 +376,7 @@ const TimeBlock = styled.div`
   letter-spacing: -0.3px;
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
+  @media (max-width: 400px) { font-size: 12px; min-width: 36px; }
 `;
 
 const ApptAvatar = styled.div`
@@ -410,6 +411,7 @@ const StatusText = styled.span<{ $status: string }>`
     if ($status === "cancelled") return "#DC2626";
     return "#D97706";
   }};
+  @media (max-width: 400px) { display: none; }
 `;
 
 const AppointmentInfo = styled.div`flex: 1; min-width: 0;`;

@@ -277,7 +277,11 @@ const AptCard = styled.div<{ $index: number; $status: string }>`
     transform: translateY(-4px) scale(1.003);
     box-shadow: var(--shadow-card-hover);
   }
-  @media (max-width: 600px) { grid-template-columns: 48px 1fr; }
+  @media (max-width: 600px) {
+    grid-template-columns: 44px 1fr auto;
+    gap: 10px;
+    padding: 12px 12px;
+  }
 `;
 
 const TimeCol = styled.div`
@@ -347,7 +351,6 @@ const AptRight = styled.div`
   align-items: flex-end;
   gap: 8px;
   flex-shrink: 0;
-  @media (max-width: 600px) { display: none; }
 `;
 
 const PriceTag = styled.span`
@@ -355,6 +358,7 @@ const PriceTag = styled.span`
   font-weight: 700;
   color: var(--color-text);
   letter-spacing: -0.3px;
+  @media (max-width: 600px) { display: none; }
 `;
 
 const StatusBtn = styled.button`
