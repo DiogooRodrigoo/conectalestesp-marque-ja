@@ -563,9 +563,9 @@ function getBusinessStatus(business: Business & { business_hours?: BusinessHours
   const openMins = openH * 60 + (openM || 0);
   const closeMins = closeH * 60 + (closeM || 0);
 
-  if (now < openMins) return { isOpen: false, label: `Abre às ${todayHours.open_time}` };
+  if (now < openMins) return { isOpen: false, label: `Abre às ${todayHours.open_time.slice(0, 5)}` };
   if (now >= closeMins) return { isOpen: false, label: "Fechado agora" };
-  return { isOpen: true, label: `Aberto · Fecha às ${todayHours.close_time}` };
+  return { isOpen: true, label: `Aberto · Fecha às ${todayHours.close_time.slice(0, 5)}` };
 }
 
 function DesktopStepList({
@@ -770,7 +770,7 @@ export default function BookingShell({ business, services, professionals }: Book
             <StepClientForm
               clientName={booking.clientName} clientPhone={booking.clientPhone}
               businessId={business.id}
-              summary={{ serviceNames: selectedServices.map((s) => s.name), date: booking.date, time: booking.time }}
+              summary={{ serviceNames: selectedServices.map((s) => s.name), date: booking.date, time: booking.time, durationMin: totalDuration }}
               onChange={(f, v) => setBooking((b) => ({ ...b, [f]: v }))}
               onNext={goNext} onBack={goBack}
             />

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import styled from "styled-components";
+import { ArrowLeft } from "@phosphor-icons/react";
 import { Business, BusinessHours } from "@/types/database";
 
 interface Props {
@@ -233,7 +234,7 @@ export default function StepDatePicker({ business, selectedDate, onSelect, onBac
   return (
     <Container>
       <BackButton onClick={onBack} type="button">
-        ← Voltar
+        <ArrowLeft size={14} weight="bold" /> Voltar
       </BackButton>
 
       <Title>Escolha a data</Title>

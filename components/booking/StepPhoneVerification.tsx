@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import styled, { keyframes } from "styled-components";
-import { ArrowClockwise } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowClockwise } from "@phosphor-icons/react";
 
 interface Props {
   clientPhone: string;
@@ -328,7 +328,7 @@ export default function StepPhoneVerification({
   return (
     <Container>
       <BackButton onClick={onBack} type="button" disabled={loading}>
-        ← Voltar
+        <ArrowLeft size={14} weight="bold" /> Voltar
       </BackButton>
 
       <Title>Verificar WhatsApp</Title>

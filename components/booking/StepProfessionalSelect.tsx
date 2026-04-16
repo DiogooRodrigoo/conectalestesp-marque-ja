@@ -1,6 +1,7 @@
 "use client";
 
 import styled from "styled-components";
+import { ArrowLeft, CheckCircle, Users } from "@phosphor-icons/react";
 import { Professional } from "@/types/database";
 
 interface Props {
@@ -138,8 +139,6 @@ const CheckBadge = styled.div`
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  font-size: 16px;
-  font-weight: 800;
 `;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -169,7 +168,7 @@ export default function StepProfessionalSelect({
   return (
     <Container>
       <BackButton onClick={onBack} type="button">
-        ← Voltar
+        <ArrowLeft size={14} weight="bold" /> Voltar
       </BackButton>
 
       <Title>Escolha o profissional</Title>
@@ -183,14 +182,14 @@ export default function StepProfessionalSelect({
           type="button"
         >
           <AvatarCircle $any>
-            👥
+            <Users size={20} weight="fill" />
           </AvatarCircle>
           <ProfInfo>
             <ProfName>Qualquer disponível</ProfName>
             <ProfBio>Atribuímos o melhor profissional para você</ProfBio>
           </ProfInfo>
           {anySelected && (
-            <CheckBadge>✓</CheckBadge>
+            <CheckBadge><CheckCircle size={20} weight="fill" /></CheckBadge>
           )}
         </ProfCard>
 
@@ -212,7 +211,7 @@ export default function StepProfessionalSelect({
                 {prof.bio && <ProfBio>{prof.bio}</ProfBio>}
               </ProfInfo>
               {isSelected && (
-                <CheckBadge>✓</CheckBadge>
+                <CheckBadge><CheckCircle size={20} weight="fill" /></CheckBadge>
               )}
             </ProfCard>
           );

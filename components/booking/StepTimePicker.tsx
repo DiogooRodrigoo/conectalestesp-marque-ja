@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import styled, { keyframes } from "styled-components";
-import { CalendarBlank } from "@phosphor-icons/react";
+import { ArrowLeft, CalendarBlank } from "@phosphor-icons/react";
 
 interface Props {
   businessId: string;
@@ -349,7 +349,7 @@ export default function StepTimePicker({
   return (
     <Container>
       <BackButton onClick={onBack} type="button">
-        ← Voltar
+        <ArrowLeft size={14} weight="bold" /> Voltar
       </BackButton>
 
       <Title>Escolha o horário</Title>

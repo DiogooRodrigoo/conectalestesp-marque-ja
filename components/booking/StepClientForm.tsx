@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import styled from "styled-components";
-import { CalendarBlank, Clock, Scissors } from "@phosphor-icons/react";
+import { ArrowLeft, CalendarBlank, Clock, Scissors } from "@phosphor-icons/react";
 
 interface BookingSummary {
   serviceNames: string[];
   date: string | null;
   time: string | null;
+  durationMin?: number;
 }
 
 interface Props {
@@ -263,7 +264,7 @@ export default function StepClientForm({
   return (
     <Container>
       <BackButton onClick={onBack} type="button">
-        ← Voltar
+        <ArrowLeft size={14} weight="bold" /> Voltar
       </BackButton>
 
       {hasSummary && (
@@ -286,6 +287,14 @@ export default function StepClientForm({
             <SummaryRow>
               <SummaryIcon><Clock size={14} weight="bold" /></SummaryIcon>
               <SummaryText>{summary.time}</SummaryText>
+            </SummaryRow>
+          )}
+          {summary.durationMin && summary.durationMin > 0 && (
+            <SummaryRow>
+              <SummaryIcon><Clock size={14} /></SummaryIcon>
+              <SummaryText style={{ color: "var(--color-text-muted)", fontSize: 12 }}>
+                Duração estimada: {summary.durationMin} min
+              </SummaryText>
             </SummaryRow>
           )}
         </SummaryCard>

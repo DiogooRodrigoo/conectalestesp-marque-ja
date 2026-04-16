@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import {
   Buildings, Phone, MapPin, Link as LinkIcon,
-  Copy, Check, Clock, PaintBucket, WhatsappLogo, Info, ForkKnife,
+  Copy, Check, Clock, WhatsappLogo, Info, ForkKnife,
 } from "@phosphor-icons/react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useBusiness } from "../BusinessContext";
@@ -162,14 +162,6 @@ const CopyBtn = styled.button<{ $copied: boolean }>`
   &:hover { background: var(--color-surface-2); color: var(--color-text); }
 `;
 
-const ColorDisplay = styled.div`display: flex; align-items: center; gap: 10px;`;
-
-const ColorCircle = styled.div<{ $color: string }>`
-  width: 28px; height: 28px; border-radius: 50%;
-  background: ${({ $color }) => $color};
-  border: 2px solid rgba(255,255,255,0.15);
-  flex-shrink: 0;
-`;
 
 const HoursGrid = styled.div`display: flex; flex-direction: column; gap: 4px;`;
 
@@ -315,24 +307,6 @@ export default function ConfiguracoesPage() {
       </Section>
 
       <Section $delay={0.1}>
-        <SectionHeader>
-          <SectionIcon><PaintBucket size={16} weight="fill" /></SectionIcon>
-          <SectionTitle>Aparência</SectionTitle>
-        </SectionHeader>
-        <SectionBody>
-          <Field>
-            <FieldLabel>Cor principal</FieldLabel>
-            <ColorDisplay>
-              <ColorCircle $color={business.primary_color ?? "#f97316"} />
-              <FieldValue style={{ fontFamily: "monospace", fontSize: 13 }}>
-                {business.primary_color ?? "#f97316"}
-              </FieldValue>
-            </ColorDisplay>
-          </Field>
-        </SectionBody>
-      </Section>
-
-      <Section $delay={0.15}>
         <SectionHeader>
           <SectionIcon><Clock size={16} weight="fill" /></SectionIcon>
           <SectionTitle>Horários de Funcionamento</SectionTitle>
