@@ -191,8 +191,9 @@ export function getAvailableSlots(params: GetAvailableSlotsParams): string[] {
     today.getDate() === dateObj.getDate();
 
   // Convert current UTC time to Brazil local minutes for comparison with slot times
+  // BUG-11: clamp to 0 — between 00:00 and 02:59 UTC the subtraction is negative
   const nowMinutes = isToday
-    ? today.getUTCHours() * 60 + today.getUTCMinutes() - BRAZIL_OFFSET_MIN
+    ? Math.max(0, today.getUTCHours() * 60 + today.getUTCMinutes() - BRAZIL_OFFSET_MIN)
     : 0;
 
   // Filter out unavailable slots

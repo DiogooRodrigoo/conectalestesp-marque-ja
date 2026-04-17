@@ -5,6 +5,7 @@ import styled, { keyframes } from "styled-components";
 import {
   Buildings, Phone, MapPin, Link as LinkIcon,
   Copy, Check, Clock, WhatsappLogo, Info, ForkKnife,
+  CurrencyCircleDollar, FloppyDisk, Spinner as SpinnerIcon,
 } from "@phosphor-icons/react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useBusiness } from "../BusinessContext";
@@ -187,12 +188,100 @@ const HourValue = styled.span`font-size: 13px; color: var(--color-text-muted);`;
 
 const LoadingCenter = styled.div`display: flex; align-items: center; justify-content: center; padding: 80px;`;
 
+// ── PIX section components ─────────────────────────────────────────────────
+
+const ToggleRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+`;
+
+const ToggleLabel = styled.div``;
+
+const ToggleTitle = styled.p`font-size: 14px; font-weight: 600; color: var(--color-text);`;
+const ToggleSub = styled.p`font-size: 12px; color: var(--color-text-muted); margin-top: 2px; line-height: 1.4;`;
+
+const Toggle = styled.button<{ $on: boolean }>`
+  width: 44px; height: 24px; border-radius: 99px;
+  border: none; cursor: pointer; flex-shrink: 0;
+  background: ${({ $on }) => $on ? "var(--color-primary)" : "var(--color-border)"};
+  position: relative; transition: background 0.2s;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: ${({ $on }) => $on ? "23px" : "3px"};
+    width: 18px; height: 18px; border-radius: 50%; background: #fff;
+    transition: left 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+`;
+
+const PixInput = styled.input`
+  width: 100%; height: 40px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+  padding: 0 12px; font-size: 13px; color: var(--color-text);
+  background: var(--color-surface-2); box-sizing: border-box;
+  transition: border-color 0.15s;
+
+  &:focus { outline: none; border-color: var(--color-primary); }
+  &::placeholder { color: var(--color-text-muted); opacity: 0.6; }
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+`;
+
+const PixSelect = styled.select`
+  width: 100%; height: 40px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+  padding: 0 12px; font-size: 13px; color: var(--color-text);
+  background: var(--color-surface-2); box-sizing: border-box;
+  cursor: pointer; transition: border-color 0.15s;
+
+  &:focus { outline: none; border-color: var(--color-primary); }
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+`;
+
+const SaveBtn = styled.button<{ $loading: boolean }>`
+  height: 40px; padding: 0 20px; border-radius: var(--radius-sm);
+  background: var(--color-primary); color: #fff; border: none;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+  opacity: ${({ $loading }) => $loading ? 0.7 : 1};
+  transition: opacity 0.2s;
+  &:hover { opacity: ${({ $loading }) => $loading ? 0.7 : 0.88}; }
+  &:disabled { cursor: not-allowed; }
+`;
+
+const spinAnim = keyframes`
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+`;
+
+const SpinWrap = styled.div`
+  animation: ${spinAnim} 0.8s linear infinite; display: flex; align-items: center;
+`;
+
+const SaveFeedback = styled.p<{ $error: boolean }>`
+  font-size: 12px;
+  color: ${({ $error }) => $error ? "var(--color-danger)" : "var(--color-success)"};
+  font-weight: 500;
+  margin-top: 4px;
+`;
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ConfiguracoesPage() {
   const { business, loading: bizLoading } = useBusiness();
   const [hours, setHours] = useState<BusinessHours[]>([]);
   const [copied, setCopied] = useState(false);
+
+  // ── PIX state ──────────────────────────────────────────────────────────────
+  const [pixEnabled, setPixEnabled] = useState(false);
+  const [pixKey, setPixKey] = useState("");
+  const [pixHolderName, setPixHolderName] = useState("");
+  const [pixChargeType, setPixChargeType] = useState<"total" | "signal">("total");
+  const [pixSignalPercent, setPixSignalPercent] = useState<number>(30);
+  const [savingPix, setSavingPix] = useState(false);
+  const [pixFeedback, setPixFeedback] = useState<{ msg: string; error: boolean } | null>(null);
 
   useEffect(() => {
     if (!business) return;
@@ -202,7 +291,40 @@ export default function ConfiguracoesPage() {
       .eq("business_id", business.id)
       .order("day_of_week")
       .then(({ data }) => setHours(data ?? []));
+
+    // Popula campos PIX com valores atuais
+    setPixEnabled(business.pix_enabled ?? false);
+    setPixKey(business.pix_key ?? "");
+    setPixHolderName(business.pix_holder_name ?? "");
+    setPixChargeType((business.pix_charge_type as "total" | "signal") ?? "total");
+    setPixSignalPercent(business.pix_signal_percent ?? 30);
   }, [business]);
+
+  async function handleSavePix() {
+    if (!business) return;
+    if (pixEnabled && (!pixKey.trim() || !pixHolderName.trim())) {
+      setPixFeedback({ msg: "Preencha a chave PIX e o nome do titular para ativar.", error: true });
+      return;
+    }
+    setSavingPix(true);
+    setPixFeedback(null);
+    const { error } = await getSupabaseClient()
+      .from("businesses")
+      .update({
+        pix_enabled: pixEnabled,
+        pix_key: pixKey.trim() || null,
+        pix_holder_name: pixHolderName.trim() || null,
+        pix_charge_type: pixChargeType,
+        pix_signal_percent: pixChargeType === "signal" ? pixSignalPercent : null,
+      })
+      .eq("id", business.id);
+    setSavingPix(false);
+    setPixFeedback(error
+      ? { msg: "Erro ao salvar. Tente novamente.", error: true }
+      : { msg: "Configurações PIX salvas com sucesso!", error: false }
+    );
+    setTimeout(() => setPixFeedback(null), 4000);
+  }
 
   function handleCopy() {
     const domain = process.env.NEXT_PUBLIC_APP_DOMAIN ?? "marqueja.conectalestesp.com.br";
@@ -348,6 +470,96 @@ export default function ConfiguracoesPage() {
           </SectionBody>
         </Section>
       )}
+
+      {/* ── Seção PIX ───────────────────────────────────────────────────── */}
+      <Section $delay={0.25}>
+        <SectionHeader>
+          <SectionIcon><CurrencyCircleDollar size={16} weight="fill" /></SectionIcon>
+          <SectionTitle>Pagamento via PIX</SectionTitle>
+        </SectionHeader>
+        <SectionBody>
+          <ToggleRow>
+            <ToggleLabel>
+              <ToggleTitle>Ativar pagamento PIX no agendamento</ToggleTitle>
+              <ToggleSub>
+                Quando ativo, o cliente precisa pagar antes de confirmar o horário.
+              </ToggleSub>
+            </ToggleLabel>
+            <Toggle
+              $on={pixEnabled}
+              type="button"
+              onClick={() => setPixEnabled((v) => !v)}
+              title={pixEnabled ? "Desativar PIX" : "Ativar PIX"}
+            />
+          </ToggleRow>
+
+          <FieldGrid>
+            <Field>
+              <FieldLabel>Chave PIX</FieldLabel>
+              <PixInput
+                value={pixKey}
+                onChange={(e) => setPixKey(e.target.value)}
+                placeholder="CPF, CNPJ, e-mail, telefone ou aleatória"
+                disabled={!pixEnabled}
+              />
+            </Field>
+            <Field>
+              <FieldLabel>Nome do titular</FieldLabel>
+              <PixInput
+                value={pixHolderName}
+                onChange={(e) => setPixHolderName(e.target.value)}
+                placeholder="Nome que aparece no QR Code"
+                disabled={!pixEnabled}
+              />
+            </Field>
+          </FieldGrid>
+
+          <FieldGrid>
+            <Field>
+              <FieldLabel>Tipo de cobrança</FieldLabel>
+              <PixSelect
+                value={pixChargeType}
+                onChange={(e) => setPixChargeType(e.target.value as "total" | "signal")}
+                disabled={!pixEnabled}
+              >
+                <option value="total">Valor total do serviço</option>
+                <option value="signal">Sinal (percentual)</option>
+              </PixSelect>
+            </Field>
+            {pixChargeType === "signal" && (
+              <Field>
+                <FieldLabel>Percentual do sinal (%)</FieldLabel>
+                <PixInput
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={pixSignalPercent}
+                  onChange={(e) => setPixSignalPercent(Number(e.target.value))}
+                  placeholder="Ex: 30"
+                  disabled={!pixEnabled}
+                />
+              </Field>
+            )}
+          </FieldGrid>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <SaveBtn
+              type="button"
+              $loading={savingPix}
+              disabled={savingPix}
+              onClick={handleSavePix}
+            >
+              {savingPix
+                ? <><SpinWrap><SpinnerIcon size={14} /></SpinWrap> Salvando...</>
+                : <><FloppyDisk size={14} weight="bold" /> Salvar PIX</>
+              }
+            </SaveBtn>
+            {pixFeedback && (
+              <SaveFeedback $error={pixFeedback.error}>{pixFeedback.msg}</SaveFeedback>
+            )}
+          </div>
+        </SectionBody>
+      </Section>
     </Page>
   );
 }

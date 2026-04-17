@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import styled, { keyframes } from "styled-components";
 import { ArrowLeft } from "@phosphor-icons/react";
@@ -13,8 +13,10 @@ import StepTimePicker from "./StepTimePicker";
 import StepClientForm from "./StepClientForm";
 import StepPhoneVerification from "./StepPhoneVerification";
 import StepConfirmation from "./StepConfirmation";
+import StepPayment from "./StepPayment";
 import SuccessScreen from "./SuccessScreen";
 import MyAppointmentsScreen from "./MyAppointmentsScreen";
+import { formatPrice } from "@/lib/utils/formatters";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,11 +48,6 @@ const TOTAL_STEPS = 7;
 const STEP_LABELS = ["Serviço", "Profissional", "Data", "Horário", "Seus dados", "Verificar", "Confirmar"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatPrice(cents: number): string {
-  if (cents === 0) return "Gratuito";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
-}
 
 function formatDateShort(ymd: string): string {
   return new Date(`${ymd}T12:00:00`).toLocaleDateString("pt-BR", {
@@ -551,20 +548,30 @@ function getBusinessStatus(business: Business & { business_hours?: BusinessHours
   const hours = business.business_hours;
   if (!hours?.length) return { isOpen: false, label: "Horários disponíveis" };
 
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const todayHours = hours.find((h) => h.day_of_week === dayOfWeek);
+  // BUG-08: use SP timezone, not browser's local timezone
+  const SP_TZ = "America/Sao_Paulo";
+  const now = new Date();
+  const spParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: SP_TZ,
+    weekday: "short", hour: "numeric", minute: "numeric", hour12: false,
+  }).formatToParts(now);
 
+  const dowMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const dayOfWeek = dowMap[spParts.find((p) => p.type === "weekday")?.value ?? "Sun"] ?? 0;
+  const spHour = parseInt(spParts.find((p) => p.type === "hour")?.value ?? "0", 10);
+  const spMinute = parseInt(spParts.find((p) => p.type === "minute")?.value ?? "0", 10);
+  const nowMins = spHour * 60 + spMinute;
+
+  const todayHours = hours.find((h) => h.day_of_week === dayOfWeek);
   if (!todayHours?.is_open) return { isOpen: false, label: "Fechado hoje" };
 
-  const now = today.getHours() * 60 + today.getMinutes();
   const [openH, openM] = todayHours.open_time.split(":").map(Number);
   const [closeH, closeM] = todayHours.close_time.split(":").map(Number);
   const openMins = openH * 60 + (openM || 0);
   const closeMins = closeH * 60 + (closeM || 0);
 
-  if (now < openMins) return { isOpen: false, label: `Abre às ${todayHours.open_time.slice(0, 5)}` };
-  if (now >= closeMins) return { isOpen: false, label: "Fechado agora" };
+  if (nowMins < openMins) return { isOpen: false, label: `Abre às ${todayHours.open_time.slice(0, 5)}` };
+  if (nowMins >= closeMins) return { isOpen: false, label: "Fechado agora" };
   return { isOpen: true, label: `Aberto · Fecha às ${todayHours.close_time.slice(0, 5)}` };
 }
 
@@ -625,26 +632,55 @@ function DesktopStepList({
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+// MELHORIA-02: converte hex (#RRGGBB) para "R, G, B"
+function hexToRgb(hex: string): string {
+  const clean = hex.replace("#", "");
+  const full = clean.length === 3
+    ? clean.split("").map((c) => c + c).join("")
+    : clean;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return "249, 115, 22";
+  return `${r}, ${g}, ${b}`;
+}
+
+// Escurece um hex em `amount` pontos (0–255) por canal
+function darkenHex(hex: string, amount = 20): string {
+  const clean = hex.replace("#", "");
+  const full = clean.length === 3
+    ? clean.split("").map((c) => c + c).join("")
+    : clean;
+  const clamp = (n: number) => Math.max(0, Math.min(255, n));
+  const r = clamp(parseInt(full.slice(0, 2), 16) - amount);
+  const g = clamp(parseInt(full.slice(2, 4), 16) - amount);
+  const b = clamp(parseInt(full.slice(4, 6), 16) - amount);
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
 export default function BookingShell({ business, services, professionals }: BookingShellProps) {
-  // Cor sempre fixa no laranja da Conecta Leste — ignora primary_color do estabelecimento
-  const primaryColor = "#F97316";
+  // MELHORIA-02: usa primary_color do estabelecimento (fallback laranja Conecta Leste)
+  const primaryColor = (business.primary_color ?? "#F97316").trim();
 
   useEffect(() => {
-    // Booking page sempre em light mode
     const prev = document.documentElement.getAttribute("data-theme");
     document.documentElement.removeAttribute("data-theme");
 
-    document.documentElement.style.setProperty("--color-primary",          "#F97316");
-    document.documentElement.style.setProperty("--color-primary-dark",     "#EA580C");
-    document.documentElement.style.setProperty("--color-primary-rgb",      "249, 115, 22");
-    document.documentElement.style.setProperty("--color-primary-glow",     "rgba(249,115,22,0.35)");
-    document.documentElement.style.setProperty("--color-primary-hero-end", "rgba(200,90,0,0.95)");
+    const rgb   = hexToRgb(primaryColor);
+    const dark  = darkenHex(primaryColor, 20);
+    const hero  = darkenHex(primaryColor, 50);
+
+    document.documentElement.style.setProperty("--color-primary",          primaryColor);
+    document.documentElement.style.setProperty("--color-primary-dark",     dark);
+    document.documentElement.style.setProperty("--color-primary-rgb",      rgb);
+    document.documentElement.style.setProperty("--color-primary-glow",     `rgba(${rgb},0.35)`);
+    document.documentElement.style.setProperty("--color-primary-hero-end", `${hero}f2`);
 
     return () => {
       if (prev) document.documentElement.setAttribute("data-theme", prev);
       else document.documentElement.removeAttribute("data-theme");
     };
-  }, []);
+  }, [primaryColor]);
 
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
@@ -656,6 +692,91 @@ export default function BookingShell({ business, services, professionals }: Book
   const [createdAppointment, setCreatedAppointment] = useState<CreatedAppointment | null>(null);
   const [showMyAppointments, setShowMyAppointments] = useState(false);
   const [mode, setMode] = useState<"landing" | "booking" | "view-verify" | "view">("landing");
+  const [pendingPayment, setPendingPayment] = useState<{
+    appointmentId: string;
+    amountCents: number;
+    startAt: string;
+  } | null>(null);
+
+  // ── Persistent client session ──────────────────────────────────────────────
+  const SESSION_KEY = `mj_session_${business.id}`;
+  const [savedSession, setSavedSession] = useState<{
+    phone: string;
+    clientName: string;
+    sessionToken: string;
+  } | null>(null);
+
+  const clearSession = useCallback(() => {
+    localStorage.removeItem(SESSION_KEY);
+    setSavedSession(null);
+  }, [SESSION_KEY]);
+
+  // Validate session from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(SESSION_KEY);
+    if (!stored) return;
+
+    let parsed: { token: string; phone: string; clientName: string; expiresAt: string } | null = null;
+    try { parsed = JSON.parse(stored); } catch { localStorage.removeItem(SESSION_KEY); return; }
+
+    if (!parsed || new Date(parsed.expiresAt) < new Date()) {
+      localStorage.removeItem(SESSION_KEY);
+      return;
+    }
+
+    fetch(`/api/auth/client/session?token=${encodeURIComponent(parsed.token)}&business_id=${business.id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.phone) {
+          setSavedSession({ phone: data.phone, clientName: data.client_name, sessionToken: parsed!.token });
+          setBooking((b) => ({ ...b, clientPhone: data.phone, clientName: data.client_name }));
+        } else {
+          localStorage.removeItem(SESSION_KEY);
+        }
+      })
+      .catch(() => { /* session check failed silently; user re-verifies next time */ });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save session to localStorage + DB after successful OTP verification
+  const saveSession = useCallback(async (verToken: string, phone: string, clientName: string) => {
+    try {
+      const res = await fetch("/api/auth/client/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone,
+          business_id: business.id,
+          client_name: clientName,
+          verification_token: verToken,
+        }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      localStorage.setItem(SESSION_KEY, JSON.stringify({
+        token: data.session_token,
+        phone: phone.replace(/\D/g, ""),
+        clientName,
+        expiresAt: data.expires_at,
+      }));
+      setSavedSession({ phone: phone.replace(/\D/g, ""), clientName, sessionToken: data.session_token });
+    } catch { /* non-critical — user just won't have persistent session */ }
+  }, [business.id, SESSION_KEY]);
+
+  // Exchange session token for a fresh verification token (skips OTP)
+  const exchangeSession = useCallback(async (): Promise<string | null> => {
+    if (!savedSession) return null;
+    try {
+      const res = await fetch("/api/auth/client/session/exchange", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_token: savedSession.sessionToken, business_id: business.id }),
+      });
+      if (!res.ok) { clearSession(); return null; }
+      const data = await res.json();
+      return data.verification_token ?? null;
+    } catch { return null; }
+  }, [savedSession, business.id, clearSession]);
 
   const goNext = () => { setDirection(1); setStep((s) => s + 1); };
   const goBack = () => { setDirection(-1); setStep((s) => s - 1); };
@@ -673,6 +794,32 @@ export default function BookingShell({ business, services, professionals }: Book
 
   // ── Shared step content renderer ──────────────────────────────────────────
   function renderStepContent() {
+    // Tela de pagamento PIX (entre confirmação e sucesso)
+    if (pendingPayment && !createdAppointment) {
+      return (
+        <StepPayment
+          appointmentId={pendingPayment.appointmentId}
+          amountCents={pendingPayment.amountCents}
+          businessId={business.id}
+          onSuccess={() => {
+            const snap = pendingPayment;
+            setPendingPayment(null);
+            setCreatedAppointment({
+              id: snap.appointmentId,
+              start_at: snap.startAt, // BUG-10: authoritative value from DB
+              services: selectedServices,
+              professional: selectedProfessional,
+              business,
+            });
+          }}
+          onRetry={() => {
+            setPendingPayment(null);
+            setStep(7);
+          }}
+        />
+      );
+    }
+
     if (createdAppointment) {
       return showMyAppointments ? (
         <MyAppointmentsScreen
@@ -692,8 +839,28 @@ export default function BookingShell({ business, services, professionals }: Book
       return (
         <StepLanding
           business={business}
+          welcomeName={savedSession?.clientName ?? null}
           onBook={() => { setMode("booking"); setStep(1); }}
-          onViewAppointments={() => { setMode("view-verify"); setStep(0); }}
+          onViewAppointments={async () => {
+            if (savedSession) {
+              // Auto-authenticate: exchange session for verification token
+              const verToken = await exchangeSession();
+              if (verToken) {
+                setVerificationToken(verToken);
+                setMode("view");
+                return;
+              }
+              // Exchange failed — fall through to manual verification
+            }
+            setMode("view-verify");
+            setStep(0);
+          }}
+          onLogout={savedSession ? () => {
+            fetch(`/api/auth/client/session?token=${encodeURIComponent(savedSession.sessionToken)}&business_id=${business.id}`, { method: "DELETE" });
+            clearSession();
+            setBooking((b) => ({ ...b, clientPhone: "", clientName: "" }));
+            setVerificationToken(null);
+          } : undefined}
         />
       );
     }
@@ -716,7 +883,11 @@ export default function BookingShell({ business, services, professionals }: Book
             {mode === "view-verify" && step === 1 && (
               <StepPhoneVerification
                 clientPhone={booking.clientPhone} businessId={business.id}
-                onVerified={(token) => { setVerificationToken(token); setMode("view"); }}
+                onVerified={(token) => {
+                  setVerificationToken(token);
+                  setMode("view");
+                  saveSession(token, booking.clientPhone, booking.clientName);
+                }}
                 onBack={() => { setDirection(-1); setStep(0); }}
               />
             )}
@@ -778,7 +949,23 @@ export default function BookingShell({ business, services, professionals }: Book
           {step === 6 && (
             <StepPhoneVerification
               clientPhone={booking.clientPhone} businessId={business.id}
-              onVerified={(token) => { setVerificationToken(token); goNext(); }}
+              sessionActive={
+                !!savedSession &&
+                savedSession.phone === booking.clientPhone.replace(/\D/g, "")
+              }
+              onVerified={(token) => {
+                setVerificationToken(token);
+                saveSession(token, booking.clientPhone, booking.clientName);
+                goNext();
+              }}
+              onSessionSkip={async () => {
+                const verToken = await exchangeSession();
+                if (verToken) {
+                  setVerificationToken(verToken);
+                  goNext();
+                }
+                // If exchange fails, StepPhoneVerification falls back to OTP UI
+              }}
               onBack={goBack}
             />
           )}
@@ -787,7 +974,11 @@ export default function BookingShell({ business, services, professionals }: Book
               booking={booking} business={business}
               services={selectedServices} professional={selectedProfessional}
               verificationToken={verificationToken!}
-              onBack={goBack} onSuccess={(appt) => setCreatedAppointment(appt)}
+              onBack={goBack}
+              onSuccess={(appt) => setCreatedAppointment(appt)}
+              onRequiresPayment={(appointmentId, amountCents, startAt) =>
+                setPendingPayment({ appointmentId, amountCents, startAt })
+              }
             />
           )}
         </motion.div>

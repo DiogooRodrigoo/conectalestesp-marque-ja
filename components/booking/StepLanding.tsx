@@ -1,13 +1,15 @@
 "use client";
 
 import styled, { keyframes } from "styled-components";
-import { CalendarBlank, Clock } from "@phosphor-icons/react";
+import { CalendarBlank, Clock, SignOut } from "@phosphor-icons/react";
 import { Business, BusinessHours } from "@/types/database";
 
 interface Props {
   business: Business & { business_hours?: BusinessHours[] };
   onBook: () => void;
   onViewAppointments: () => void;
+  welcomeName?: string | null;
+  onLogout?: () => void;
 }
 
 // ─── Styled Components ────────────────────────────────────────────────────────
@@ -124,9 +126,57 @@ const ButtonSub = styled.span`
   line-height: 1;
 `;
 
+const WelcomeBanner = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(var(--color-primary-rgb), 0.07);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.18);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  animation: ${fadeUp} 0.3s ease both;
+`;
+
+const WelcomeText = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+const WelcomeGreeting = styled.span`
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+`;
+
+const WelcomeName = styled.span`
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-text);
+  letter-spacing: -0.2px;
+`;
+
+const LogoutBtn = styled.button`
+  background: none;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+  transition: color 0.2s, background 0.2s;
+
+  &:hover {
+    color: var(--color-danger, #ef4444);
+    background: rgba(239, 68, 68, 0.08);
+  }
+`;
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function StepLanding({ onBook, onViewAppointments }: Props) {
+export default function StepLanding({ onBook, onViewAppointments, welcomeName, onLogout }: Props) {
   const handleBook = () => {
     navigator.vibrate?.(40);
     onBook();
@@ -139,6 +189,20 @@ export default function StepLanding({ onBook, onViewAppointments }: Props) {
 
   return (
     <Container>
+      {welcomeName && (
+        <WelcomeBanner>
+          <WelcomeText>
+            <WelcomeGreeting>Bem-vindo de volta 👋</WelcomeGreeting>
+            <WelcomeName>{welcomeName.split(" ")[0]}</WelcomeName>
+          </WelcomeText>
+          {onLogout && (
+            <LogoutBtn type="button" onClick={onLogout} title="Sair da conta">
+              <SignOut size={18} weight="bold" />
+            </LogoutBtn>
+          )}
+        </WelcomeBanner>
+      )}
+
       <ButtonsWrapper>
         <PrimaryButton onClick={handleBook}>
           <IconBox><CalendarBlank size={20} weight="fill" /></IconBox>

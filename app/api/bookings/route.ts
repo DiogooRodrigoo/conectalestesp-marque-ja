@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClientWithServiceRole } from "@/lib/supabase/server";
+import { createServerSupabaseClient, createServerSupabaseClientWithServiceRole } from "@/lib/supabase/server";
 import { sendWhatsApp } from "@/lib/whatsapp/send";
 import {
   confirmationMessage,
@@ -17,6 +17,24 @@ interface CreateBookingBody {
   notes?: string;
   verification_token: string;
   force?: boolean;           // true = permite duplo agendamento no mesmo dia
+  source?: "public" | "admin"; // admin = bypass PIX obrigatório
+}
+
+const MIN_PIX_AMOUNT_CENTS = 500; // R$ 5,00
+
+function calcularValorPix(
+  services: { price_cents: number }[],
+  chargeType: string | null,
+  signalPercent: number | null,
+  platformFeePercent: number | null
+): number {
+  const totalServicos = services.reduce((acc, s) => acc + s.price_cents, 0);
+  const valorBase =
+    chargeType === "signal" && signalPercent
+      ? Math.round(totalServicos * (signalPercent / 100))
+      : totalServicos;
+  const taxa = Math.round(valorBase * ((platformFeePercent ?? 5) / 100));
+  return valorBase + taxa;
 }
 
 // Server runs in UTC; always format in São Paulo local time for notifications
@@ -67,6 +85,26 @@ export async function POST(request: NextRequest) {
         { error: "service_ids must be a non-empty array" },
         { status: 400 }
       );
+    }
+
+    // M-02/M-04: Limites de tamanho para evitar payloads abusivos
+    if (body.service_ids.length > 10) {
+      return NextResponse.json({ error: "Too many services" }, { status: 400 });
+    }
+    if (body.client_name.length > 120) {
+      return NextResponse.json({ error: "client_name too long" }, { status: 400 });
+    }
+    if (body.notes && body.notes.length > 500) {
+      return NextResponse.json({ error: "notes too long" }, { status: 400 });
+    }
+
+    // C-02: source:admin só é aceito com sessão autenticada no painel
+    if (body.source === "admin") {
+      const adminClient = await createServerSupabaseClient();
+      const { data: { user }, error: authError } = await adminClient.auth.getUser();
+      if (authError || !user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
     }
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
@@ -156,23 +194,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ── Consome o token ───────────────────────────────────────────────────────
-    await supabase
-      .from("phone_verifications")
-      .update({ token_used_at: new Date().toISOString() })
-      .eq("id", verification.id);
-
     // ── Busca negócio e todos os serviços selecionados ────────────────────────
     const [businessResult, servicesResult] = await Promise.all([
       supabase
         .from("businesses")
-        .select("id, name, slot_duration, phone_whatsapp, booking_enabled")
+        .select("id, name, slot_duration, phone_whatsapp, booking_enabled, pix_enabled, pix_key, pix_charge_type, pix_signal_percent, pix_platform_fee_percent")
         .eq("id", body.business_id)
         .single(),
+      // A-02: filtra por business_id para impedir uso de serviços de outro negócio
       supabase
         .from("services")
         .select("id, name, duration_min, price_cents, is_active")
-        .in("id", body.service_ids),
+        .in("id", body.service_ids)
+        .eq("business_id", body.business_id),
     ]);
 
     if (businessResult.error || !businessResult.data) {
@@ -215,13 +249,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── Valida professional_id contra business_id (A-02) ─────────────────────
+    let professional: { name: string } | null = null;
+    if (body.professional_id) {
+      const { data: prof, error: profError } = await supabase
+        .from("professionals")
+        .select("name")
+        .eq("id", body.professional_id)
+        .eq("business_id", body.business_id)
+        .single();
+
+      if (profError || !prof) {
+        return NextResponse.json({ error: "Professional not found" }, { status: 404 });
+      }
+      professional = prof;
+    }
+
     // ── Verifica conflito de horário com profissional ─────────────────────────
     if (body.professional_id) {
+      // BUG-02: awaiting_payment também bloqueia o slot
       const { data: conflicts } = await supabase
         .from("appointments")
         .select("id")
         .eq("professional_id", body.professional_id)
-        .in("status", ["confirmed", "pending"])
+        .in("status", ["confirmed", "pending", "awaiting_payment"])
         .lt("start_at", endAt.toISOString())
         .gt("end_at", startAt.toISOString());
 
@@ -233,20 +284,32 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { data: professional } = body.professional_id
-      ? await supabase
-          .from("professionals")
-          .select("name")
-          .eq("id", body.professional_id)
-          .single()
-      : { data: null };
-
     // Serviço primário = primeiro da lista (para o campo FK único da tabela)
     const primaryService = services.find(s => s.id === body.service_ids[0]) ?? services[0];
     const serviceNames = services.map((s) => s.name).join(" + ");
 
     // Sempre salva telefone somente com dígitos
     const normalizedClientPhone = cleanPhone;
+
+    // ── Verifica se o negócio requer pagamento PIX ────────────────────────────
+    const isAdminSource = body.source === "admin";
+    const pixEnabled = business.pix_enabled && business.pix_key && !isAdminSource;
+
+    let pixAmountCents: number | null = null;
+    let requiresPayment = false;
+
+    if (pixEnabled) {
+      pixAmountCents = calcularValorPix(
+        services,
+        business.pix_charge_type ?? "total",
+        business.pix_signal_percent ?? null,
+        business.pix_platform_fee_percent ?? 5
+      );
+      // Só exige pagamento se valor mínimo de R$ 5,00 for atingido
+      requiresPayment = pixAmountCents >= MIN_PIX_AMOUNT_CENTS;
+    }
+
+    const appointmentStatus = requiresPayment ? "awaiting_payment" : "confirmed";
 
     const { data: appointment, error: insertError } = await supabase
       .from("appointments")
@@ -258,10 +321,13 @@ export async function POST(request: NextRequest) {
         client_phone: normalizedClientPhone,
         start_at: startAt.toISOString(),
         end_at: endAt.toISOString(),
-        status: "confirmed",
+        status: appointmentStatus,
         notes: body.notes ?? null,
         reminder_sent: false,
         confirmation_sent: false,
+        payment_required: requiresPayment,
+        payment_status: requiresPayment ? "awaiting" : null,
+        payment_amount_cents: requiresPayment ? pixAmountCents : null,
       })
       .select()
       .single();
@@ -271,6 +337,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Failed to create appointment" },
         { status: 500 }
+      );
+    }
+
+    // BUG-03: consome token apenas após insert bem-sucedido, evitando bloquear o cliente em caso de erro
+    await supabase
+      .from("phone_verifications")
+      .update({ token_used_at: new Date().toISOString() })
+      .eq("id", verification.id);
+
+    // ── Se requer pagamento PIX, retorna dados para o frontend prosseguir ──────
+    if (requiresPayment) {
+      return NextResponse.json(
+        {
+          requires_payment: true,
+          appointment_id: appointment.id,
+          amount_cents: pixAmountCents,
+          start_at: appointment.start_at, // BUG-10: authoritative value from DB
+        },
+        { status: 201 }
       );
     }
 

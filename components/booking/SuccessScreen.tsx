@@ -8,6 +8,7 @@ import {
   Clock, Scissors, User, WhatsappLogo, Warning,
 } from "@phosphor-icons/react";
 import { Business } from "@/types/database";
+import { formatPrice } from "@/lib/utils/formatters";
 import { CreatedAppointment } from "./BookingShell";
 
 interface Props {
@@ -375,10 +376,6 @@ function formatDateTime(isoString: string) {
   };
 }
 
-function formatPrice(cents: number): string {
-  if (cents === 0) return "Gratuito";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
-}
 
 function buildWhatsAppUrl(appointment: CreatedAppointment, business: Business, date: string, time: string): string | null {
   if (!business.phone_whatsapp) return null;

@@ -3,6 +3,7 @@
 import styled, { keyframes } from "styled-components";
 import { CheckCircle } from "@phosphor-icons/react";
 import { Service } from "@/types/database";
+import { formatPrice } from "@/lib/utils/formatters";
 
 interface Props {
   services: Service[];
@@ -262,14 +263,6 @@ const SelectedCountBadge = styled.span`
 `;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function formatPrice(cents: number): string {
-  if (cents === 0) return "Gratuito";
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(cents / 100);
-}
 
 function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes} min`;

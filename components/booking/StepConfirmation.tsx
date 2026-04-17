@@ -15,6 +15,7 @@ import {
 } from "@phosphor-icons/react";
 import { Business, Service, Professional } from "@/types/database";
 import { BookingState, CreatedAppointment } from "./BookingShell";
+import { formatPrice, formatDuration } from "@/lib/utils/formatters";
 
 interface DuplicateInfo {
   id: string;
@@ -31,6 +32,7 @@ interface Props {
   verificationToken: string;
   onBack: () => void;
   onSuccess: (appointment: CreatedAppointment) => void;
+  onRequiresPayment: (appointmentId: string, amountCents: number, startAt: string) => void;
 }
 
 // ─── Styled Components ────────────────────────────────────────────────────────
@@ -313,13 +315,6 @@ const ConfirmButton = styled.button<{ $loading: boolean }>`
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function formatPrice(cents: number): string {
-  if (cents === 0) return "Gratuito";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
-    cents / 100
-  );
-}
-
 function formatDate(date: string): string {
   return new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR", {
     weekday: "long",
@@ -328,12 +323,6 @@ function formatDate(date: string): string {
   });
 }
 
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m > 0 ? `${h}h ${m}min` : `${h}h`;
-}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -345,6 +334,7 @@ export default function StepConfirmation({
   verificationToken,
   onBack,
   onSuccess,
+  onRequiresPayment,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -386,6 +376,12 @@ export default function StepConfirmation({
 
       if (!res.ok) {
         throw new Error(data.error ?? "Erro ao confirmar agendamento");
+      }
+
+      // Negócio requer pagamento PIX antes de confirmar
+      if (data.requires_payment) {
+        onRequiresPayment(data.appointment_id, data.amount_cents, data.start_at);
+        return;
       }
 
       onSuccess({

@@ -24,6 +24,12 @@ export type Database = {
           end_at: string
           id: string
           notes: string | null
+          payment_amount_cents: number | null
+          payment_expires_at: string | null
+          payment_id: string | null
+          payment_paid_at: string | null
+          payment_required: boolean | null
+          payment_status: string | null
           professional_id: string | null
           reminder_sent: boolean | null
           service_id: string | null
@@ -40,6 +46,12 @@ export type Database = {
           end_at: string
           id?: string
           notes?: string | null
+          payment_amount_cents?: number | null
+          payment_expires_at?: string | null
+          payment_id?: string | null
+          payment_paid_at?: string | null
+          payment_required?: boolean | null
+          payment_status?: string | null
           professional_id?: string | null
           reminder_sent?: boolean | null
           service_id?: string | null
@@ -56,6 +68,12 @@ export type Database = {
           end_at?: string
           id?: string
           notes?: string | null
+          payment_amount_cents?: number | null
+          payment_expires_at?: string | null
+          payment_id?: string | null
+          payment_paid_at?: string | null
+          payment_required?: boolean | null
+          payment_status?: string | null
           professional_id?: string | null
           reminder_sent?: boolean | null
           service_id?: string | null
@@ -181,6 +199,12 @@ export type Database = {
           name: string
           owner_id: string | null
           phone_whatsapp: string | null
+          pix_charge_type: string | null
+          pix_enabled: boolean | null
+          pix_holder_name: string | null
+          pix_key: string | null
+          pix_platform_fee_percent: number | null
+          pix_signal_percent: number | null
           primary_color: string | null
           slot_duration: number | null
           slug: string
@@ -200,6 +224,12 @@ export type Database = {
           name: string
           owner_id?: string | null
           phone_whatsapp?: string | null
+          pix_charge_type?: string | null
+          pix_enabled?: boolean | null
+          pix_holder_name?: string | null
+          pix_key?: string | null
+          pix_platform_fee_percent?: number | null
+          pix_signal_percent?: number | null
           primary_color?: string | null
           slot_duration?: number | null
           slug: string
@@ -219,6 +249,12 @@ export type Database = {
           name?: string
           owner_id?: string | null
           phone_whatsapp?: string | null
+          pix_charge_type?: string | null
+          pix_enabled?: boolean | null
+          pix_holder_name?: string | null
+          pix_key?: string | null
+          pix_platform_fee_percent?: number | null
+          pix_signal_percent?: number | null
           primary_color?: string | null
           slot_duration?: number | null
           slug?: string

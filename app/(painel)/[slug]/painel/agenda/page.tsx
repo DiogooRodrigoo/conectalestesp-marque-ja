@@ -38,12 +38,17 @@ function formatCurrency(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+// BUG-09: build range in SP timezone, not browser local time
 function dayRange(date: Date) {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(date);
-  end.setHours(23, 59, 59, 999);
-  return { start: start.toISOString(), end: end.toISOString() };
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const y = date.getFullYear();
+  const m = pad(date.getMonth() + 1);
+  const d = pad(date.getDate());
+  // These timestamps are interpreted by PostgreSQL as timestamptz
+  return {
+    start: `${y}-${m}-${d}T00:00:00-03:00`,
+    end:   `${y}-${m}-${d}T23:59:59.999-03:00`,
+  };
 }
 
 function toLocalDatetimeValue(date: Date) {
@@ -51,14 +56,15 @@ function toLocalDatetimeValue(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-type AptStatus = "confirmed" | "pending" | "completed" | "cancelled" | "no_show";
+type AptStatus = "confirmed" | "pending" | "completed" | "cancelled" | "no_show" | "awaiting_payment";
 
 const statusMap: Record<AptStatus, { label: string; variant: "success" | "orange" | "default" | "danger" | "warning" }> = {
-  confirmed: { label: "Confirmado", variant: "orange" },
-  pending:   { label: "Pendente",   variant: "default" },
-  completed: { label: "Concluído",   variant: "success" },
-  cancelled: { label: "Cancelado",  variant: "danger" },
-  no_show:   { label: "Faltou",     variant: "warning" },
+  confirmed:        { label: "Confirmado",    variant: "orange" },
+  pending:          { label: "Pendente",      variant: "default" },
+  completed:        { label: "Concluído",      variant: "success" },
+  cancelled:        { label: "Cancelado",     variant: "danger" },
+  no_show:          { label: "Faltou",        variant: "warning" },
+  awaiting_payment: { label: "Aguardando PIX", variant: "warning" },
 };
 
 const STATUS_OPTIONS: { value: AptStatus; label: string }[] = [
@@ -256,9 +262,10 @@ const AptCard = styled.div<{ $index: number; $status: string }>`
   -webkit-backdrop-filter: var(--glass-blur);
   border: var(--glass-border);
   border-left: 3px solid ${({ $status }) => {
-    if ($status === "completed") return "var(--color-success)";
-    if ($status === "confirmed") return "var(--color-primary)";
-    if ($status === "cancelled") return "var(--color-danger)";
+    if ($status === "completed")        return "var(--color-success)";
+    if ($status === "confirmed")        return "var(--color-primary)";
+    if ($status === "cancelled")        return "var(--color-danger)";
+    if ($status === "awaiting_payment") return "#f59e0b";
     return "rgba(255,255,255,0.3)";
   }};
   border-radius: var(--radius-2xl);
@@ -678,10 +685,15 @@ export default function AgendaPage() {
   }
 
   async function changeStatus(aptId: string, newStatus: AptStatus) {
-    await getSupabaseClient()
+    // BUG-07: handle Supabase errors instead of silently ignoring them
+    const { error } = await getSupabaseClient()
       .from("appointments")
       .update({ status: newStatus })
       .eq("id", aptId);
+    if (error) {
+      console.error("[changeStatus] Supabase error:", error.message);
+      return;
+    }
     setAppointments((prev) =>
       prev.map((a) => (a.id === aptId ? { ...a, status: newStatus } : a))
     );
@@ -703,7 +715,8 @@ export default function AgendaPage() {
     const durationMin = selectedService?.duration_min ?? 30;
     const endAt = new Date(startAt.getTime() + durationMin * 60_000);
 
-    const { data } = await supabase
+    // BUG-06: handle Supabase errors
+    const { data, error: insertError } = await supabase
       .from("appointments")
       .insert({
         business_id: business.id,
@@ -719,6 +732,11 @@ export default function AgendaPage() {
       .select("*, service:services(*), professional:professionals(*)")
       .single();
 
+    if (insertError) {
+      console.error("[handleSaveNewApt] Supabase error:", insertError.message);
+      setSaving(false);
+      return;
+    }
     if (data) {
       const apt = data as AppointmentWithRelations;
       if (isSameDay(new Date(apt.start_at), selectedDate)) {

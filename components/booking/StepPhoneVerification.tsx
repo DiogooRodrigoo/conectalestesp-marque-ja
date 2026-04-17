@@ -9,6 +9,10 @@ interface Props {
   businessId: string;
   onVerified: (token: string) => void;
   onBack: () => void;
+  /** True when the user has a valid persistent session for this phone */
+  sessionActive?: boolean;
+  /** Called when user wants to skip OTP via saved session */
+  onSessionSkip?: () => Promise<void>;
 }
 
 // ─── Styled Components ────────────────────────────────────────────────────────
@@ -207,6 +211,63 @@ const WhatsAppBadge = styled.div`
   font-weight: 600;
 `;
 
+const SessionBanner = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: rgba(var(--color-primary-rgb), 0.07);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+  border-radius: 14px;
+  padding: 20px 16px;
+  text-align: center;
+`;
+
+const SessionBannerTitle = styled.p`
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+`;
+
+const SessionBannerSub = styled.p`
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+`;
+
+const SessionSkipBtn = styled.button<{ $loading: boolean }>`
+  width: 100%;
+  height: 54px;
+  background: var(--gradient-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: ${({ $loading }) => ($loading ? "not-allowed" : "pointer")};
+  opacity: ${({ $loading }) => ($loading ? 0.7 : 1)};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.2s, transform 0.12s;
+  box-shadow: var(--shadow-btn);
+
+  &:hover { opacity: ${({ $loading }) => ($loading ? 0.7 : 0.92)}; transform: ${({ $loading }) => ($loading ? "none" : "translateY(-1px)")}; }
+  &:active { transform: translateY(0); }
+`;
+
+const UseOtpLink = styled.button`
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  &:hover { color: var(--color-text); }
+`;
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const CODE_LENGTH = 6;
@@ -216,6 +277,8 @@ export default function StepPhoneVerification({
   businessId,
   onVerified,
   onBack,
+  sessionActive = false,
+  onSessionSkip,
 }: Props) {
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [loading, setLoading] = useState(false);
@@ -223,6 +286,8 @@ export default function StepPhoneVerification({
   const [shaking, setShaking] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [sending, setSending] = useState(false);
+  const [showOtp, setShowOtp] = useState(!sessionActive);
+  const [skipLoading, setSkipLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Countdown para reenvio
@@ -297,6 +362,13 @@ export default function StepPhoneVerification({
     }
   };
 
+  const handleSessionSkip = async () => {
+    if (!onSessionSkip) return;
+    setSkipLoading(true);
+    await onSessionSkip();
+    setSkipLoading(false);
+  };
+
   const handleResend = async () => {
     if (countdown > 0 || sending) return;
     setSending(true);
@@ -324,6 +396,50 @@ export default function StepPhoneVerification({
       setSending(false);
     }
   };
+
+  // Session banner: user has a saved session — offer to skip OTP
+  if (sessionActive && !showOtp) {
+    return (
+      <Container>
+        <BackButton onClick={onBack} type="button">
+          <ArrowLeft size={14} weight="bold" /> Voltar
+        </BackButton>
+
+        <Title>Verificar identidade</Title>
+        <Subtitle>
+          Identificamos um login salvo para{" "}
+          <PhoneHighlight>{clientPhone}</PhoneHighlight>
+        </Subtitle>
+
+        <SessionBanner>
+          <span style={{ fontSize: 36 }}>🔐</span>
+          <SessionBannerTitle>Continuar sem reenviar código?</SessionBannerTitle>
+          <SessionBannerSub>
+            Você verificou esse número recentemente. Posso pular o código do WhatsApp desta vez.
+          </SessionBannerSub>
+        </SessionBanner>
+
+        <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+          <SessionSkipBtn
+            type="button"
+            $loading={skipLoading}
+            disabled={skipLoading}
+            onClick={handleSessionSkip}
+          >
+            {skipLoading ? (
+              <><SpinIcon><ArrowClockwise size={18} /></SpinIcon>Verificando...</>
+            ) : (
+              "Continuar sem reenviar código"
+            )}
+          </SessionSkipBtn>
+
+          <UseOtpLink type="button" onClick={() => setShowOtp(true)}>
+            Prefiro receber um novo código no WhatsApp
+          </UseOtpLink>
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container>

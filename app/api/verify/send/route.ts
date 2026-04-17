@@ -1,9 +1,10 @@
+import { randomInt } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClientWithServiceRole } from "@/lib/supabase/server";
 import { sendWhatsApp } from "@/lib/whatsapp/send";
 
 function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return randomInt(100000, 1000000).toString(); // A-03: CSPRNG
 }
 
 function stripPhone(phone: string): string {
