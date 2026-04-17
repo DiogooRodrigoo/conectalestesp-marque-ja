@@ -19,6 +19,7 @@ interface Props {
   businessId: string;
   onSuccess: () => void;
   onRetry: () => void;
+  onGoHome?: () => void;
 }
 
 // ─── Styled Components ────────────────────────────────────────────────────────
@@ -235,6 +236,20 @@ const RetryButton = styled.button`
   &:hover { opacity: 0.88; }
 `;
 
+const ExitLink = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  padding: 4px 8px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s;
+  margin-top: 4px;
+  &:hover { color: var(--color-text); }
+`;
+
 const InstructionList = styled.ol`
   margin: 0;
   padding: 0 0 0 18px;
@@ -245,6 +260,50 @@ const InstructionList = styled.ol`
   width: 100%;
 `;
 
+const dotPulse = keyframes`
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40%            { transform: scale(1);   opacity: 1; }
+`;
+
+const AwaitingCard = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(var(--color-primary-rgb), 0.06);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.18);
+  text-align: center;
+  width: 100%;
+`;
+
+const AwaitingTitle = styled.p`
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+`;
+
+const AwaitingDesc = styled.p`
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+`;
+
+const DotsRow = styled.div`
+  display: flex;
+  gap: 5px;
+  align-items: center;
+`;
+
+const Dot = styled.div<{ $delay: string }>`
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  animation: ${dotPulse} 1.2s ease-in-out ${({ $delay }) => $delay} infinite;
+`;
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatTimer(seconds: number): string {
@@ -253,7 +312,7 @@ function formatTimer(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-const PIX_DURATION_SECONDS = 10 * 60; // 10 minutos
+const PIX_DURATION_SECONDS = 30 * 60; // 30 minutos
 const POLLING_INTERVAL_MS = 5000;
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -264,6 +323,7 @@ export default function StepPayment({
   businessId,
   onSuccess,
   onRetry,
+  onGoHome,
 }: Props) {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [qrCodeText, setQrCodeText] = useState("");
@@ -418,8 +478,17 @@ export default function StepPayment({
         <StatusCard $type="success">
           <CheckCircle size={56} color="#16a34a" weight="fill" />
           <StatusTitle>Pagamento confirmado! 🎉</StatusTitle>
-          <StatusDesc>Seu agendamento está confirmado. Aguarde...</StatusDesc>
+          <StatusDesc>Seu agendamento está confirmado.</StatusDesc>
         </StatusCard>
+        {onGoHome && (
+          <RetryButton
+            type="button"
+            onClick={onGoHome}
+            style={{ marginTop: 16, background: "var(--color-primary)" }}
+          >
+            Voltar ao início
+          </RetryButton>
+        )}
       </Container>
     );
   }
@@ -501,8 +570,26 @@ export default function StepPayment({
           <li>Abra o app do seu banco e acesse a opção PIX</li>
           <li>Escaneie o QR Code ou use o código copia-e-cola</li>
           <li>Confirme o pagamento de <strong>{formatPrice(amountCents)}</strong></li>
-          <li>A confirmação é automática — aguarde nesta tela</li>
+          <li>Aguarde a confirmação do estabelecimento nesta tela</li>
         </InstructionList>
+
+        <AwaitingCard>
+          <DotsRow>
+            <Dot $delay="0s" />
+            <Dot $delay="0.2s" />
+            <Dot $delay="0.4s" />
+          </DotsRow>
+          <AwaitingTitle>Aguardando confirmação do estabelecimento</AwaitingTitle>
+          <AwaitingDesc>
+            Após seu pagamento, o estabelecimento confirma o recebimento e seu agendamento é garantido automaticamente.
+          </AwaitingDesc>
+        </AwaitingCard>
+
+        {onGoHome && (
+          <ExitLink type="button" onClick={onGoHome}>
+            Pagar depois · voltar ao início
+          </ExitLink>
+        )}
       </QrBox>
     </Container>
   );

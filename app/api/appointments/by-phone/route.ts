@@ -56,6 +56,10 @@ export async function GET(request: NextRequest) {
         end_at,
         status,
         notes,
+        payment_status,
+        payment_amount_cents,
+        payment_expires_at,
+        payment_id,
         services ( name, duration_min, price_cents ),
         professionals ( name )
       `)

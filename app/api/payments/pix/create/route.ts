@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClientWithServiceRole } from "@/lib/supabase/server";
+import { generatePixBRCode, generatePixQRCodeBase64 } from "@/lib/pix/brcode";
+import { sendWhatsApp } from "@/lib/whatsapp/send";
+import { formatPrice } from "@/lib/utils/formatters";
 
 interface CreatePixBody {
   business_id: string;
@@ -16,10 +19,9 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServerSupabaseClientWithServiceRole();
 
-    // Busca appointment e business para validar
     const { data: appointment, error: apptError } = await supabase
       .from("appointments")
-      .select("id, status, payment_status, business_id, payment_amount_cents")
+      .select("id, status, payment_status, business_id, payment_amount_cents, client_name, client_phone")
       .eq("id", body.appointment_id)
       .eq("business_id", body.business_id)
       .single();
@@ -34,76 +36,65 @@ export async function POST(request: NextRequest) {
 
     const { data: business, error: bizError } = await supabase
       .from("businesses")
-      .select("pix_enabled, pix_key, pix_holder_name")
+      .select("id, name, pix_enabled, pix_key, address, phone_whatsapp")
       .eq("id", body.business_id)
       .single();
 
     if (bizError || !business || !business.pix_enabled || !business.pix_key) {
-      return NextResponse.json({ error: "PIX not configured for this business" }, { status: 400 });
+      return NextResponse.json({ error: "PIX não configurado para este estabelecimento" }, { status: 400 });
     }
 
-    const appId = process.env.OPENPIX_APP_ID;
-    if (!appId) {
-      return NextResponse.json({ error: "PIX provider not configured" }, { status: 500 });
-    }
-
-    // C-01: amount comes from DB, never from client
+    // C-01: valor vem do banco, nunca do cliente
     const amountCents = appointment.payment_amount_cents;
     if (!amountCents || amountCents <= 0) {
-      return NextResponse.json({ error: "Invalid payment amount" }, { status: 400 });
+      return NextResponse.json({ error: "Valor de pagamento inválido" }, { status: 400 });
     }
 
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    // Cidade do estabelecimento (campo obrigatório no BR Code)
+    const address = business.address as { city?: string } | null;
+    const city = address?.city ?? "Sao Paulo";
 
-    // Chama API OpenPix para gerar cobrança dinâmica
-    const correlationID = `marqueja-${body.appointment_id}`;
-    const pixRes = await fetch("https://api.openpix.com.br/api/v1/charge", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: appId,
-      },
-      body: JSON.stringify({
-        correlationID,
-        value: amountCents,
-        comment: `Sinal de reserva - Marque Já`,
-        expiresIn: 600, // 10 minutos em segundos
-        pixKey: business.pix_key,
-        destinationAlias: business.pix_key,
-        type: "DYNAMIC",
-      }),
+    // Gera um ID de transação interno
+    const txid = body.appointment_id.replace(/-/g, "").slice(0, 25);
+
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutos
+
+    // Gera BR Code PIX localmente — sem gateway externo
+    const brCode = generatePixBRCode({
+      pixKey: business.pix_key,
+      merchantName: business.name,
+      merchantCity: city,
+      amountCents,
+      txid,
     });
 
-    if (!pixRes.ok) {
-      const pixError = await pixRes.text();
-      console.error("[PIX create] OpenPix error:", pixRes.status, pixError);
-      return NextResponse.json({ error: "Failed to create PIX charge" }, { status: 502 });
-    }
-
-    const pixData = await pixRes.json();
-    const charge = pixData.charge ?? pixData;
-
-    const paymentId = charge.correlationID ?? correlationID;
-    const qrCode = charge.qrCodeImage ?? charge.brCode ?? "";
-    const qrCodeText = charge.brCode ?? charge.pixKey ?? "";
+    const qrCodeBase64 = await generatePixQRCodeBase64(brCode);
 
     // Salva payment_id e expires_at no appointment
     await supabase
       .from("appointments")
       .update({
-        payment_id: paymentId,
+        payment_id: txid,
         payment_expires_at: expiresAt.toISOString(),
       })
       .eq("id", body.appointment_id);
 
+    // Avisa o estabelecimento que um cliente está aguardando confirmação do PIX
+    if (business.phone_whatsapp) {
+      sendWhatsApp(
+        business.phone_whatsapp,
+        `💰 *PIX aguardando confirmação*\n\nO cliente *${appointment.client_name}* gerou um PIX de *${formatPrice(amountCents)}*.\n\nQuando receber o pagamento, confirme no painel do MarqueJá. ✅`
+      ).catch(() => {});
+    }
+
     return NextResponse.json({
-      qr_code: qrCode,
-      qr_code_text: qrCodeText,
-      payment_id: paymentId,
+      qr_code: qrCodeBase64,
+      qr_code_text: brCode,
+      payment_id: txid,
       expires_at: expiresAt.toISOString(),
     });
   } catch (err) {
     console.error("[POST /api/payments/pix/create]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }

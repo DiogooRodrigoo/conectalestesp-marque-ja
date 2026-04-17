@@ -6,6 +6,7 @@ import {
   Buildings, Phone, MapPin, Link as LinkIcon,
   Copy, Check, Clock, WhatsappLogo, Info, ForkKnife,
   CurrencyCircleDollar, FloppyDisk, Spinner as SpinnerIcon,
+  PencilSimple, X, Warning,
 } from "@phosphor-icons/react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useBusiness } from "../BusinessContext";
@@ -267,6 +268,42 @@ const SaveFeedback = styled.p<{ $error: boolean }>`
   margin-top: 4px;
 `;
 
+const EditBtn = styled.button`
+  height: 34px; padding: 0 14px; border-radius: var(--radius-sm);
+  background: transparent; border: 1px solid var(--color-border);
+  color: var(--color-text-muted); font-size: 12.5px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; gap: 5px;
+  transition: border-color 0.15s, color 0.15s;
+  &:hover { border-color: var(--color-primary); color: var(--color-primary); }
+`;
+
+const CancelBtn = styled.button`
+  height: 34px; padding: 0 14px; border-radius: var(--radius-sm);
+  background: transparent; border: 1px solid var(--color-border);
+  color: var(--color-text-muted); font-size: 12.5px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; gap: 5px;
+  transition: border-color 0.15s, color 0.15s;
+  &:hover { border-color: var(--color-danger); color: var(--color-danger); }
+`;
+
+const SectionHeaderActions = styled.div`
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const WarnBanner = styled.div`
+  display: flex; align-items: flex-start; gap: 10px;
+  background: rgba(234,179,8,0.07); border: 1px solid rgba(234,179,8,0.25);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+`;
+
+const WarnText = styled.p`
+  font-size: 12.5px; color: rgba(161,120,0,0.9); line-height: 1.55;
+  strong { font-weight: 700; }
+`;
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ConfiguracoesPage() {
@@ -277,11 +314,14 @@ export default function ConfiguracoesPage() {
   // ── PIX state ──────────────────────────────────────────────────────────────
   const [pixEnabled, setPixEnabled] = useState(false);
   const [pixKey, setPixKey] = useState("");
+  const [pixKeyType, setPixKeyType] = useState<"cpf" | "cnpj" | "email" | "phone" | "random">("cpf");
   const [pixHolderName, setPixHolderName] = useState("");
   const [pixChargeType, setPixChargeType] = useState<"total" | "signal">("total");
   const [pixSignalPercent, setPixSignalPercent] = useState<number>(30);
   const [savingPix, setSavingPix] = useState(false);
+  const [savingToggle, setSavingToggle] = useState(false);
   const [pixFeedback, setPixFeedback] = useState<{ msg: string; error: boolean } | null>(null);
+  const [pixEditing, setPixEditing] = useState(false);
 
   useEffect(() => {
     if (!business) return;
@@ -295,10 +335,33 @@ export default function ConfiguracoesPage() {
     // Popula campos PIX com valores atuais
     setPixEnabled(business.pix_enabled ?? false);
     setPixKey(business.pix_key ?? "");
+    setPixKeyType((business.pix_key_type as "cpf" | "cnpj" | "email" | "phone" | "random") ?? "cpf");
     setPixHolderName(business.pix_holder_name ?? "");
     setPixChargeType((business.pix_charge_type as "total" | "signal") ?? "total");
     setPixSignalPercent(business.pix_signal_percent ?? 30);
   }, [business]);
+
+  async function handleTogglePixEnabled() {
+    if (!business || savingToggle) return;
+    const newValue = !pixEnabled;
+    if (newValue && (!pixKey.trim() || !pixHolderName.trim())) {
+      setPixFeedback({ msg: "Configure a chave PIX e o nome do titular antes de ativar.", error: true });
+      setTimeout(() => setPixFeedback(null), 4000);
+      return;
+    }
+    setSavingToggle(true);
+    setPixEnabled(newValue);
+    const { error } = await getSupabaseClient()
+      .from("businesses")
+      .update({ pix_enabled: newValue })
+      .eq("id", business.id);
+    setSavingToggle(false);
+    if (error) {
+      setPixEnabled(!newValue);
+      setPixFeedback({ msg: "Erro ao salvar. Tente novamente.", error: true });
+      setTimeout(() => setPixFeedback(null), 4000);
+    }
+  }
 
   async function handleSavePix() {
     if (!business) return;
@@ -313,17 +376,32 @@ export default function ConfiguracoesPage() {
       .update({
         pix_enabled: pixEnabled,
         pix_key: pixKey.trim() || null,
+        pix_key_type: pixKeyType,
         pix_holder_name: pixHolderName.trim() || null,
         pix_charge_type: pixChargeType,
         pix_signal_percent: pixChargeType === "signal" ? pixSignalPercent : null,
       })
       .eq("id", business.id);
     setSavingPix(false);
-    setPixFeedback(error
-      ? { msg: "Erro ao salvar. Tente novamente.", error: true }
-      : { msg: "Configurações PIX salvas com sucesso!", error: false }
-    );
+    if (!error) {
+      setPixEditing(false);
+      setPixFeedback({ msg: "Configurações PIX salvas com sucesso!", error: false });
+    } else {
+      setPixFeedback({ msg: "Erro ao salvar. Tente novamente.", error: true });
+    }
     setTimeout(() => setPixFeedback(null), 4000);
+  }
+
+  function handleCancelPixEdit() {
+    if (!business) return;
+    setPixEnabled(business.pix_enabled ?? false);
+    setPixKey(business.pix_key ?? "");
+    setPixKeyType((business.pix_key_type as "cpf" | "cnpj" | "email" | "phone" | "random") ?? "cpf");
+    setPixHolderName(business.pix_holder_name ?? "");
+    setPixChargeType((business.pix_charge_type as "total" | "signal") ?? "total");
+    setPixSignalPercent(business.pix_signal_percent ?? 30);
+    setPixEditing(false);
+    setPixFeedback(null);
   }
 
   function handleCopy() {
@@ -473,61 +551,110 @@ export default function ConfiguracoesPage() {
 
       {/* ── Seção PIX ───────────────────────────────────────────────────── */}
       <Section $delay={0.25}>
-        <SectionHeader>
-          <SectionIcon><CurrencyCircleDollar size={16} weight="fill" /></SectionIcon>
-          <SectionTitle>Pagamento via PIX</SectionTitle>
-        </SectionHeader>
-        <SectionBody>
-          <ToggleRow>
-            <ToggleLabel>
-              <ToggleTitle>Ativar pagamento PIX no agendamento</ToggleTitle>
-              <ToggleSub>
-                Quando ativo, o cliente precisa pagar antes de confirmar o horário.
-              </ToggleSub>
-            </ToggleLabel>
-            <Toggle
-              $on={pixEnabled}
-              type="button"
-              onClick={() => setPixEnabled((v) => !v)}
-              title={pixEnabled ? "Desativar PIX" : "Ativar PIX"}
-            />
-          </ToggleRow>
+          <SectionHeader>
+            <SectionIcon><CurrencyCircleDollar size={16} weight="fill" /></SectionIcon>
+            <SectionTitle>Pagamento via PIX</SectionTitle>
+            <SectionHeaderActions>
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 99,
+                background: pixEnabled ? "rgba(34,197,94,0.12)" : "rgba(var(--color-border-rgb),0.4)",
+                color: pixEnabled ? "var(--color-success)" : "var(--color-text-muted)",
+                border: `1px solid ${pixEnabled ? "rgba(34,197,94,0.25)" : "var(--color-border)"}`,
+              }}>
+                {savingToggle ? "..." : pixEnabled ? "Ativo" : "Inativo"}
+              </span>
+              {!pixEditing ? (
+                <EditBtn type="button" onClick={() => setPixEditing(true)}>
+                  <PencilSimple size={13} weight="bold" /> Editar
+                </EditBtn>
+              ) : (
+                <CancelBtn type="button" onClick={handleCancelPixEdit}>
+                  <X size={13} weight="bold" /> Cancelar
+                </CancelBtn>
+              )}
+            </SectionHeaderActions>
+          </SectionHeader>
+          <SectionBody>
 
-          <FieldGrid>
-            <Field>
-              <FieldLabel>Chave PIX</FieldLabel>
-              <PixInput
-                value={pixKey}
-                onChange={(e) => setPixKey(e.target.value)}
-                placeholder="CPF, CNPJ, e-mail, telefone ou aleatória"
-                disabled={!pixEnabled}
-              />
-            </Field>
-            <Field>
-              <FieldLabel>Nome do titular</FieldLabel>
-              <PixInput
-                value={pixHolderName}
-                onChange={(e) => setPixHolderName(e.target.value)}
-                placeholder="Nome que aparece no QR Code"
-                disabled={!pixEnabled}
-              />
-            </Field>
-          </FieldGrid>
+            {pixEditing && (
+              <WarnBanner>
+                <Warning size={16} weight="fill" style={{ color: "rgba(161,120,0,0.9)", flexShrink: 0, marginTop: 1 }} />
+                <WarnText>
+                  <strong>Atenção:</strong> Evite alterar a chave PIX com frequência.
+                  Ao trocar a chave, os QR Codes anteriores gerados para clientes deixam de funcionar.
+                  Só altere se realmente necessário.
+                </WarnText>
+              </WarnBanner>
+            )}
 
-          <FieldGrid>
-            <Field>
-              <FieldLabel>Tipo de cobrança</FieldLabel>
-              <PixSelect
-                value={pixChargeType}
-                onChange={(e) => setPixChargeType(e.target.value as "total" | "signal")}
-                disabled={!pixEnabled}
-              >
-                <option value="total">Valor total do serviço</option>
-                <option value="signal">Sinal (percentual)</option>
-              </PixSelect>
-            </Field>
-            {pixChargeType === "signal" && (
+            <ToggleRow>
+              <ToggleLabel>
+                <ToggleTitle>Ativar pagamento PIX no agendamento</ToggleTitle>
+                <ToggleSub>
+                  Quando ativo, o cliente precisa pagar antes de confirmar o horário.
+                </ToggleSub>
+              </ToggleLabel>
+              <Toggle
+                $on={pixEnabled}
+                type="button"
+                onClick={handleTogglePixEnabled}
+                disabled={savingToggle}
+                title={pixEnabled ? "Clique para desativar" : "Clique para ativar"}
+                style={{ opacity: savingToggle ? 0.6 : 1 }}
+              />
+            </ToggleRow>
+
+            <FieldGrid>
               <Field>
+                <FieldLabel>Tipo da chave PIX</FieldLabel>
+                <PixSelect
+                  value={pixKeyType}
+                  onChange={(e) => setPixKeyType(e.target.value as typeof pixKeyType)}
+                  disabled={!pixEditing}
+                >
+                  <option value="cpf">CPF</option>
+                  <option value="cnpj">CNPJ</option>
+                  <option value="email">E-mail</option>
+                  <option value="phone">Telefone</option>
+                  <option value="random">Chave aleatória</option>
+                </PixSelect>
+              </Field>
+              <Field>
+                <FieldLabel>Chave PIX</FieldLabel>
+                <PixInput
+                  value={pixKey}
+                  onChange={(e) => setPixKey(e.target.value)}
+                  placeholder="Digite sua chave PIX"
+                  disabled={!pixEditing}
+                />
+              </Field>
+            </FieldGrid>
+
+            <FieldGrid>
+              <Field>
+                <FieldLabel>Nome do titular</FieldLabel>
+                <PixInput
+                  value={pixHolderName}
+                  onChange={(e) => setPixHolderName(e.target.value)}
+                  placeholder="Nome que aparece no QR Code"
+                  disabled={!pixEditing}
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Tipo de cobrança</FieldLabel>
+                <PixSelect
+                  value={pixChargeType}
+                  onChange={(e) => setPixChargeType(e.target.value as "total" | "signal")}
+                  disabled={!pixEditing}
+                >
+                  <option value="total">Valor total do serviço</option>
+                  <option value="signal">Sinal (percentual)</option>
+                </PixSelect>
+              </Field>
+            </FieldGrid>
+
+            {pixChargeType === "signal" && (
+              <Field style={{ maxWidth: 200 }}>
                 <FieldLabel>Percentual do sinal (%)</FieldLabel>
                 <PixInput
                   type="number"
@@ -536,29 +663,35 @@ export default function ConfiguracoesPage() {
                   value={pixSignalPercent}
                   onChange={(e) => setPixSignalPercent(Number(e.target.value))}
                   placeholder="Ex: 30"
-                  disabled={!pixEnabled}
+                  disabled={!pixEditing}
                 />
               </Field>
             )}
-          </FieldGrid>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <SaveBtn
-              type="button"
-              $loading={savingPix}
-              disabled={savingPix}
-              onClick={handleSavePix}
-            >
-              {savingPix
-                ? <><SpinWrap><SpinnerIcon size={14} /></SpinWrap> Salvando...</>
-                : <><FloppyDisk size={14} weight="bold" /> Salvar PIX</>
-              }
-            </SaveBtn>
-            {pixFeedback && (
+            {pixEditing && (
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <SaveBtn
+                  type="button"
+                  $loading={savingPix}
+                  disabled={savingPix}
+                  onClick={handleSavePix}
+                >
+                  {savingPix
+                    ? <><SpinWrap><SpinnerIcon size={14} /></SpinWrap> Salvando...</>
+                    : <><FloppyDisk size={14} weight="bold" /> Salvar alterações</>
+                  }
+                </SaveBtn>
+                {pixFeedback && (
+                  <SaveFeedback $error={pixFeedback.error}>{pixFeedback.msg}</SaveFeedback>
+                )}
+              </div>
+            )}
+
+            {!pixEditing && pixFeedback && (
               <SaveFeedback $error={pixFeedback.error}>{pixFeedback.msg}</SaveFeedback>
             )}
-          </div>
-        </SectionBody>
+
+          </SectionBody>
       </Section>
     </Page>
   );

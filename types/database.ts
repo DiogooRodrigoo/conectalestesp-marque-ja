@@ -203,7 +203,7 @@ export type Database = {
           pix_enabled: boolean | null
           pix_holder_name: string | null
           pix_key: string | null
-          pix_platform_fee_percent: number | null
+          pix_key_type: string | null
           pix_signal_percent: number | null
           primary_color: string | null
           slot_duration: number | null
@@ -228,7 +228,7 @@ export type Database = {
           pix_enabled?: boolean | null
           pix_holder_name?: string | null
           pix_key?: string | null
-          pix_platform_fee_percent?: number | null
+          pix_key_type?: string | null
           pix_signal_percent?: number | null
           primary_color?: string | null
           slot_duration?: number | null
@@ -253,7 +253,7 @@ export type Database = {
           pix_enabled?: boolean | null
           pix_holder_name?: string | null
           pix_key?: string | null
-          pix_platform_fee_percent?: number | null
+          pix_key_type?: string | null
           pix_signal_percent?: number | null
           primary_color?: string | null
           slot_duration?: number | null
@@ -483,6 +483,47 @@ export type Database = {
             referencedRelation: "client_products"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      client_sessions: {
+        Row: {
+          id: string
+          business_id: string
+          phone: string
+          client_name: string
+          session_token: string
+          created_at: string
+          expires_at: string
+          last_used_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          phone: string
+          client_name: string
+          session_token: string
+          created_at?: string
+          expires_at: string
+          last_used_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          phone?: string
+          client_name?: string
+          session_token?: string
+          created_at?: string
+          expires_at?: string
+          last_used_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_sessions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          }
         ]
       }
       phone_verifications: {

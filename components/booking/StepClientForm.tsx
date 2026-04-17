@@ -16,6 +16,7 @@ interface Props {
   clientPhone: string;
   businessId: string;
   summary?: BookingSummary;
+  sessionActive?: boolean;
   onChange: (field: "clientName" | "clientPhone", value: string) => void;
   onNext: () => void;
   onBack: () => void;
@@ -221,6 +222,7 @@ export default function StepClientForm({
   clientPhone,
   businessId,
   summary,
+  sessionActive = false,
   onChange,
   onNext,
   onBack,
@@ -249,12 +251,14 @@ export default function StepClientForm({
     setTouched({ name: true, phone: true });
     if (!isValid) return;
 
-    const cleanPhone = clientPhone.replace(/\D/g, "");
-    fetch("/api/verify/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: cleanPhone, business_id: businessId }),
-    }).catch(() => {});
+    if (!sessionActive) {
+      const cleanPhone = clientPhone.replace(/\D/g, "");
+      fetch("/api/verify/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: cleanPhone, business_id: businessId }),
+      }).catch(() => {});
+    }
 
     onNext();
   };

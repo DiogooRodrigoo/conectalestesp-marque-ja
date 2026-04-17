@@ -59,13 +59,20 @@ function toLocalDatetimeValue(date: Date) {
 type AptStatus = "confirmed" | "pending" | "completed" | "cancelled" | "no_show" | "awaiting_payment";
 
 const statusMap: Record<AptStatus, { label: string; variant: "success" | "orange" | "default" | "danger" | "warning" }> = {
-  confirmed:        { label: "Confirmado",    variant: "orange" },
-  pending:          { label: "Pendente",      variant: "default" },
+  confirmed:        { label: "Confirmado",     variant: "orange"  },
+  pending:          { label: "Pendente",       variant: "default" },
   completed:        { label: "Concluído",      variant: "success" },
-  cancelled:        { label: "Cancelado",     variant: "danger" },
-  no_show:          { label: "Faltou",        variant: "warning" },
-  awaiting_payment: { label: "Aguardando PIX", variant: "warning" },
+  cancelled:        { label: "Cancelado",      variant: "danger"  },
+  no_show:          { label: "Faltou",         variant: "warning" },
+  awaiting_payment: { label: "Aguard. PIX",    variant: "warning" },
 };
+
+function getAgendaStatus(status: AptStatus, paymentStatus?: string | null) {
+  if (status === "confirmed" && paymentStatus === "paid") {
+    return { label: "PIX Pago", variant: "success" as const };
+  }
+  return statusMap[status] ?? statusMap.pending;
+}
 
 const STATUS_OPTIONS: { value: AptStatus; label: string }[] = [
   { value: "pending",   label: "Pendente" },
@@ -376,6 +383,15 @@ const StatusBtn = styled.button`
   &:hover { background: var(--color-surface-2); }
 `;
 
+const PixConfirmBtn = styled.button`
+  height: 26px; padding: 0 9px; border-radius: 7px; flex-shrink: 0;
+  background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.35);
+  color: #F97316; font-size: 11px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+  transition: background 0.15s;
+  &:hover { background: rgba(249,115,22,0.18); }
+`;
+
 const StatusMenuEl = styled.div<{ $top: number; $right: number }>`
   position: fixed;
   top: ${({ $top }) => $top}px;
@@ -684,18 +700,54 @@ export default function AgendaPage() {
     return weekBlocks.has(`${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`);
   }
 
+  async function confirmPixPayment(aptId: string) {
+    try {
+      const res = await fetch("/api/payments/pix/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointment_id: aptId }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        console.error("[confirmPixPayment] error:", data.error);
+        return;
+      }
+    } catch (err) {
+      console.error("[confirmPixPayment] fetch error:", err);
+      return;
+    }
+    setAppointments((prev) =>
+      prev.map((a) =>
+        a.id === aptId
+          ? { ...a, status: "confirmed" as AptStatus, payment_status: "paid" }
+          : a
+      )
+    );
+    setDetailApt((prev) =>
+      prev?.id === aptId ? { ...prev, status: "confirmed" as AptStatus, payment_status: "paid" } : prev
+    );
+  }
+
   async function changeStatus(aptId: string, newStatus: AptStatus) {
-    // BUG-07: handle Supabase errors instead of silently ignoring them
+    const current = appointments.find((a) => a.id === aptId);
+    const isPixConfirm = newStatus === "confirmed" && current?.status === "awaiting_payment";
+
+    const updatePayload: Record<string, unknown> = { status: newStatus };
+    if (isPixConfirm) {
+      updatePayload.payment_status = "paid";
+      updatePayload.payment_paid_at = new Date().toISOString();
+    }
+
     const { error } = await getSupabaseClient()
       .from("appointments")
-      .update({ status: newStatus })
+      .update(updatePayload)
       .eq("id", aptId);
     if (error) {
       console.error("[changeStatus] Supabase error:", error.message);
       return;
     }
     setAppointments((prev) =>
-      prev.map((a) => (a.id === aptId ? { ...a, status: newStatus } : a))
+      prev.map((a) => (a.id === aptId ? { ...a, status: newStatus, ...(isPixConfirm ? { payment_status: "paid" } : {}) } : a))
     );
     setStatusMenuId(null);
   }
@@ -832,7 +884,8 @@ export default function AgendaPage() {
           {appointments.map((apt, i) => {
             const time = new Date(apt.start_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
             const durationMin = apt.service?.duration_min;
-            const s = statusMap[apt.status as AptStatus] ?? statusMap.pending;
+            const s = getAgendaStatus(apt.status as AptStatus, apt.payment_status);
+            const isPendingPix = apt.status === "awaiting_payment" && apt.payment_status !== "paid";
             return (
               <AptCard
                 key={apt.id}
@@ -856,24 +909,34 @@ export default function AgendaPage() {
                   </AptDetails>
                 </AptInfo>
                 <AptRight>
-                  <StatusBtn
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (statusMenuId === apt.id) {
-                        setStatusMenuId(null);
-                      } else {
-                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                        setMenuCoords({
-                          top: rect.bottom + 6,
-                          right: window.innerWidth - rect.right,
-                        });
-                        setStatusMenuId(apt.id);
-                      }
-                    }}
-                    title="Alterar status"
-                  >
-                    <Badge variant={s.variant} dot>{s.label}</Badge>
-                  </StatusBtn>
+                  {isPendingPix ? (
+                    <PixConfirmBtn
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); confirmPixPayment(apt.id); }}
+                      title="Confirmar recebimento do PIX"
+                    >
+                      ✓ PIX
+                    </PixConfirmBtn>
+                  ) : (
+                    <StatusBtn
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (statusMenuId === apt.id) {
+                          setStatusMenuId(null);
+                        } else {
+                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                          setMenuCoords({
+                            top: rect.bottom + 6,
+                            right: window.innerWidth - rect.right,
+                          });
+                          setStatusMenuId(apt.id);
+                        }
+                      }}
+                      title="Alterar status"
+                    >
+                      <Badge variant={s.variant} dot>{s.label}</Badge>
+                    </StatusBtn>
+                  )}
                   {apt.service && <PriceTag>{formatCurrency(apt.service.price_cents)}</PriceTag>}
                 </AptRight>
               </AptCard>
@@ -910,7 +973,7 @@ export default function AgendaPage() {
         const startDate = new Date(apt.start_at);
         const dateStr = startDate.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
         const timeStr = startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-        const s = statusMap[apt.status as AptStatus] ?? statusMap.pending;
+        const s = getAgendaStatus(apt.status as AptStatus, apt.payment_status);
         return (
           <Modal
             open={!!detailApt}
@@ -918,7 +981,17 @@ export default function AgendaPage() {
             title="Detalhes do Agendamento"
             size="md"
             footer={
-              <Button variant="ghost" onClick={() => setDetailApt(null)}>Fechar</Button>
+              <>
+                {apt.status === "awaiting_payment" && apt.payment_status !== "paid" && (
+                  <Button
+                    variant="primary"
+                    onClick={() => confirmPixPayment(apt.id)}
+                  >
+                    ✓ Confirmar recebimento do PIX
+                  </Button>
+                )}
+                <Button variant="ghost" onClick={() => setDetailApt(null)}>Fechar</Button>
+              </>
             }
           >
             <DetailGrid>

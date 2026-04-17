@@ -659,16 +659,15 @@ function darkenHex(hex: string, amount = 20): string {
 }
 
 export default function BookingShell({ business, services, professionals }: BookingShellProps) {
-  // MELHORIA-02: usa primary_color do estabelecimento (fallback laranja Conecta Leste)
-  const primaryColor = (business.primary_color ?? "#F97316").trim();
+  const primaryColor = "#F97316"; // Conecta Leste — cor fixa independente do estabelecimento
 
   useEffect(() => {
     const prev = document.documentElement.getAttribute("data-theme");
     document.documentElement.removeAttribute("data-theme");
 
-    const rgb   = hexToRgb(primaryColor);
-    const dark  = darkenHex(primaryColor, 20);
-    const hero  = darkenHex(primaryColor, 50);
+    const rgb  = "249, 115, 22";
+    const dark = "#ea6c0e";
+    const hero = "#c45a0a";
 
     document.documentElement.style.setProperty("--color-primary",          primaryColor);
     document.documentElement.style.setProperty("--color-primary-dark",     dark);
@@ -680,7 +679,7 @@ export default function BookingShell({ business, services, professionals }: Book
       if (prev) document.documentElement.setAttribute("data-theme", prev);
       else document.documentElement.removeAttribute("data-theme");
     };
-  }, [primaryColor]);
+  }, []);
 
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
@@ -816,6 +815,11 @@ export default function BookingShell({ business, services, professionals }: Book
             setPendingPayment(null);
             setStep(7);
           }}
+          onGoHome={() => {
+            setPendingPayment(null);
+            setStep(1);
+            setMode("landing");
+          }}
         />
       );
     }
@@ -875,6 +879,7 @@ export default function BookingShell({ business, services, professionals }: Book
               <StepClientForm
                 clientName={booking.clientName} clientPhone={booking.clientPhone}
                 businessId={business.id}
+                sessionActive={!!savedSession}
                 onChange={(f, v) => setBooking((b) => ({ ...b, [f]: v }))}
                 onNext={() => { setDirection(1); setStep(1); }}
                 onBack={() => { setMode("landing"); setStep(1); }}
@@ -941,6 +946,7 @@ export default function BookingShell({ business, services, professionals }: Book
             <StepClientForm
               clientName={booking.clientName} clientPhone={booking.clientPhone}
               businessId={business.id}
+              sessionActive={!!savedSession}
               summary={{ serviceNames: selectedServices.map((s) => s.name), date: booking.date, time: booking.time, durationMin: totalDuration }}
               onChange={(f, v) => setBooking((b) => ({ ...b, [f]: v }))}
               onNext={goNext} onBack={goBack}

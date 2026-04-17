@@ -25,16 +25,12 @@ const MIN_PIX_AMOUNT_CENTS = 500; // R$ 5,00
 function calcularValorPix(
   services: { price_cents: number }[],
   chargeType: string | null,
-  signalPercent: number | null,
-  platformFeePercent: number | null
+  signalPercent: number | null
 ): number {
   const totalServicos = services.reduce((acc, s) => acc + s.price_cents, 0);
-  const valorBase =
-    chargeType === "signal" && signalPercent
-      ? Math.round(totalServicos * (signalPercent / 100))
-      : totalServicos;
-  const taxa = Math.round(valorBase * ((platformFeePercent ?? 5) / 100));
-  return valorBase + taxa;
+  return chargeType === "signal" && signalPercent
+    ? Math.round(totalServicos * (signalPercent / 100))
+    : totalServicos;
 }
 
 // Server runs in UTC; always format in São Paulo local time for notifications
@@ -198,7 +194,7 @@ export async function POST(request: NextRequest) {
     const [businessResult, servicesResult] = await Promise.all([
       supabase
         .from("businesses")
-        .select("id, name, slot_duration, phone_whatsapp, booking_enabled, pix_enabled, pix_key, pix_charge_type, pix_signal_percent, pix_platform_fee_percent")
+        .select("id, name, slot_duration, phone_whatsapp, booking_enabled, pix_enabled, pix_key, pix_charge_type, pix_signal_percent")
         .eq("id", body.business_id)
         .single(),
       // A-02: filtra por business_id para impedir uso de serviços de outro negócio
@@ -302,8 +298,7 @@ export async function POST(request: NextRequest) {
       pixAmountCents = calcularValorPix(
         services,
         business.pix_charge_type ?? "total",
-        business.pix_signal_percent ?? null,
-        business.pix_platform_fee_percent ?? 5
+        business.pix_signal_percent ?? null
       );
       // Só exige pagamento se valor mínimo de R$ 5,00 for atingido
       requiresPayment = pixAmountCents >= MIN_PIX_AMOUNT_CENTS;

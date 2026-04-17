@@ -70,10 +70,13 @@ function getTodayDate() {
   });
 }
 
-function getStatusLabel(status: string) {
+function getStatusLabel(status: string, paymentStatus?: string | null) {
+  if (status === "awaiting_payment") return "Aguard. PIX";
+  if (status === "confirmed" && paymentStatus === "paid") return "PIX Pago";
   const map: Record<string, string> = {
     confirmed: "Confirmado", pending: "Pendente",
     completed: "Concluído",  cancelled: "Cancelado",
+    no_show: "Faltou",
   };
   return map[status] ?? status;
 }
@@ -395,21 +398,27 @@ const ApptAvatar = styled.div`
 
 const StatusDotWrap = styled.div`display: flex; align-items: center; gap: 5px; flex-shrink: 0;`;
 
-const StatusDot = styled.div<{ $status: string }>`
+const StatusDot = styled.div<{ $status: string; $paid?: boolean }>`
   width: 6px; height: 6px; border-radius: 50%;
-  background: ${({ $status }) => {
-    if ($status === "confirmed" || $status === "completed") return "#16A34A";
+  background: ${({ $status, $paid }) => {
+    if ($status === "completed") return "#16A34A";
+    if ($status === "confirmed") return $paid ? "#16A34A" : "var(--color-primary)";
     if ($status === "cancelled") return "#DC2626";
-    return "#D97706";
+    if ($status === "no_show")   return "#EF4444";
+    if ($status === "awaiting_payment") return "#D97706";
+    return "#94A3B8";
   }};
 `;
 
-const StatusText = styled.span<{ $status: string }>`
+const StatusText = styled.span<{ $status: string; $paid?: boolean }>`
   font-size: 11px; font-weight: 700;
-  color: ${({ $status }) => {
-    if ($status === "confirmed" || $status === "completed") return "#16A34A";
+  color: ${({ $status, $paid }) => {
+    if ($status === "completed") return "#16A34A";
+    if ($status === "confirmed") return $paid ? "#16A34A" : "var(--color-primary)";
     if ($status === "cancelled") return "#DC2626";
-    return "#D97706";
+    if ($status === "no_show")   return "#EF4444";
+    if ($status === "awaiting_payment") return "#D97706";
+    return "#94A3B8";
   }};
   @media (max-width: 400px) { display: none; }
 `;
@@ -430,6 +439,15 @@ const AppointmentMeta = styled.p`
 const MetaDot = styled.span`
   width: 3px; height: 3px; border-radius: 50%;
   background: var(--color-border); display: inline-block;
+`;
+
+const PixConfirmBtn = styled.button`
+  height: 28px; padding: 0 10px; border-radius: 8px; flex-shrink: 0;
+  background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.35);
+  color: #F97316; font-size: 11px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+  transition: background 0.15s, border-color 0.15s;
+  &:hover { background: rgba(249,115,22,0.18); border-color: rgba(249,115,22,0.6); }
 `;
 
 const LoadingCenter = styled.div`
@@ -486,12 +504,19 @@ const WelcomeClose = styled.button`
 const WELCOME_KEY = "mj_welcome_dismissed";
 
 const statusMap: Record<string, { label: string; variant: "success" | "orange" | "default" | "danger" | "warning" }> = {
-  confirmed: { label: "Confirmado", variant: "orange"  },
-  pending:   { label: "Pendente",   variant: "default" },
-  completed: { label: "Concluído",  variant: "success" },
-  cancelled: { label: "Cancelado",  variant: "danger"  },
-  no_show:   { label: "Faltou",     variant: "warning" },
+  confirmed:        { label: "Confirmado",   variant: "orange"  },
+  confirmed_paid:   { label: "PIX Pago",     variant: "success" },
+  pending:          { label: "Pendente",     variant: "default" },
+  completed:        { label: "Concluído",    variant: "success" },
+  cancelled:        { label: "Cancelado",    variant: "danger"  },
+  no_show:          { label: "Faltou",       variant: "warning" },
+  awaiting_payment: { label: "Aguard. PIX",  variant: "warning" },
 };
+
+function getStatusMapEntry(status: string, paymentStatus?: string | null) {
+  if (status === "confirmed" && paymentStatus === "paid") return statusMap.confirmed_paid;
+  return statusMap[status] ?? statusMap.pending;
+}
 
 export default function OverviewPage() {
   const { business, loading: bizLoading } = useBusiness();
@@ -511,6 +536,19 @@ export default function OverviewPage() {
     setShowWelcome(false);
   }
 
+  async function confirmPixPayment(aptId: string) {
+    const res = await fetch("/api/payments/pix/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appointment_id: aptId }),
+    });
+    if (!res.ok) return;
+    setTodayApts((prev) =>
+      prev.map((a) => a.id === aptId ? { ...a, status: "confirmed", payment_status: "paid" } as typeof a : a)
+    );
+    setDetailApt((prev) => prev?.id === aptId ? { ...prev, status: "confirmed", payment_status: "paid" } as typeof prev : prev);
+  }
+
   useEffect(() => {
     if (!business) return;
 
@@ -524,7 +562,7 @@ export default function OverviewPage() {
       const [todayRes, weekRes, monthRes, last7Res] = await Promise.all([
         supabase
           .from("appointments")
-          .select("*, service:services(*), professional:professionals(*)")
+          .select("*, service:services(*), professional:professionals(*), payment_status, payment_amount_cents")
           .eq("business_id", business!.id)
           .gte("start_at", todayStart).lte("start_at", todayEnd)
           .neq("status", "cancelled").order("start_at"),
@@ -699,10 +737,28 @@ export default function OverviewPage() {
                     {apt.professional && <><MetaDot /><User size={11} />{apt.professional.name}</>}
                   </AppointmentMeta>
                 </AppointmentInfo>
-                <StatusDotWrap>
-                  <StatusDot $status={apt.status} />
-                  <StatusText $status={apt.status}>{getStatusLabel(apt.status)}</StatusText>
-                </StatusDotWrap>
+                {apt.status === "awaiting_payment" && (apt as { payment_status?: string | null }).payment_status !== "paid" ? (
+                  <PixConfirmBtn
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); confirmPixPayment(apt.id); }}
+                    title="Confirmar recebimento do PIX"
+                  >
+                    ✓ PIX
+                  </PixConfirmBtn>
+                ) : (
+                  <StatusDotWrap>
+                    <StatusDot
+                      $status={apt.status}
+                      $paid={(apt as { payment_status?: string | null }).payment_status === "paid"}
+                    />
+                    <StatusText
+                      $status={apt.status}
+                      $paid={(apt as { payment_status?: string | null }).payment_status === "paid"}
+                    >
+                      {getStatusLabel(apt.status, (apt as { payment_status?: string | null }).payment_status)}
+                    </StatusText>
+                  </StatusDotWrap>
+                )}
               </AppointmentItem>
             );
           })}
@@ -717,7 +773,7 @@ export default function OverviewPage() {
           weekday: "long", day: "numeric", month: "long", year: "numeric",
         });
         const timeStr = startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-        const s = statusMap[apt.status] ?? statusMap.pending;
+        const s = getStatusMapEntry(apt.status, (apt as { payment_status?: string | null }).payment_status);
         return (
           <Modal
             open={!!detailApt}
@@ -725,17 +781,31 @@ export default function OverviewPage() {
             title="Detalhes do Agendamento"
             size="md"
             footer={
-              <button
-                onClick={() => setDetailApt(null)}
-                style={{
-                  padding: "8px 16px", borderRadius: "var(--radius-sm)",
-                  fontSize: 13, color: "var(--color-text-muted)",
-                  border: "1px solid var(--color-border)",
-                  background: "transparent", cursor: "pointer",
-                }}
-              >
-                Fechar
-              </button>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                {apt.status === "awaiting_payment" && (apt as { payment_status?: string }).payment_status !== "paid" && (
+                  <button
+                    onClick={() => confirmPixPayment(apt.id)}
+                    style={{
+                      padding: "8px 16px", borderRadius: "var(--radius-sm)",
+                      fontSize: 13, fontWeight: 700, color: "#fff",
+                      background: "var(--color-primary)", border: "none", cursor: "pointer",
+                    }}
+                  >
+                    ✓ Confirmar recebimento do PIX
+                  </button>
+                )}
+                <button
+                  onClick={() => setDetailApt(null)}
+                  style={{
+                    padding: "8px 16px", borderRadius: "var(--radius-sm)",
+                    fontSize: 13, color: "var(--color-text-muted)",
+                    border: "1px solid var(--color-border)",
+                    background: "transparent", cursor: "pointer",
+                  }}
+                >
+                  Fechar
+                </button>
+              </div>
             }
           >
             <DetailGrid>

@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
     }
 
-    if (appointment.payment_status === "paid") {
+    // Considera pago se payment_status = "paid" OU se o status foi confirmado manualmente pelo painel
+    if (appointment.payment_status === "paid" || appointment.status === "confirmed") {
       return NextResponse.json({
         status: "paid",
         paid_at: appointment.payment_paid_at,
