@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClientWithServiceRole } from "@/lib/supabase/server";
 
+// Rate limit simples: máx 20 req/min por appointmentId (proteção dentro da mesma instância)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(key: string, maxPerMinute = 20): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + 60_000 });
+    return true;
+  }
+  if (entry.count >= maxPerMinute) return false;
+  entry.count++;
+  return true;
+}
+
 // A-05: exige payment_id além de appointment_id para evitar enumeração de status.
-// payment_id (correlationID do OpenPix) só é conhecido por quem iniciou o PIX.
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -13,6 +27,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: "appointment_id e payment_id são obrigatórios" },
         { status: 400 }
+      );
+    }
+
+    if (!checkRateLimit(appointmentId)) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": "60" } }
       );
     }
 
@@ -53,7 +74,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ status: "awaiting" });
+    return NextResponse.json(
+      { status: "awaiting" },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   } catch (err) {
     console.error("[GET /api/payments/pix/status]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

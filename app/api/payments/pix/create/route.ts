@@ -84,7 +84,9 @@ export async function POST(request: NextRequest) {
       sendWhatsApp(
         business.phone_whatsapp,
         `💰 *PIX aguardando confirmação*\n\nO cliente *${appointment.client_name}* gerou um PIX de *${formatPrice(amountCents)}*.\n\nQuando receber o pagamento, confirme no painel do MarqueJá. ✅`
-      ).catch(() => {});
+      ).then((r) => {
+        if (!r.success) console.warn("[WhatsApp] pix/create owner notify failed:", r.error);
+      }).catch((err) => console.error("[WhatsApp] pix/create owner notify error:", err));
     }
 
     return NextResponse.json({

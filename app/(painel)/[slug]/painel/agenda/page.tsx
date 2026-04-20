@@ -882,7 +882,7 @@ export default function AgendaPage() {
       ) : (
         <List>
           {appointments.map((apt, i) => {
-            const time = new Date(apt.start_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+            const time = new Date(apt.start_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
             const durationMin = apt.service?.duration_min;
             const s = getAgendaStatus(apt.status as AptStatus, apt.payment_status);
             const isPendingPix = apt.status === "awaiting_payment" && apt.payment_status !== "paid";
@@ -971,8 +971,8 @@ export default function AgendaPage() {
       {detailApt && (() => {
         const apt = detailApt;
         const startDate = new Date(apt.start_at);
-        const dateStr = startDate.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-        const timeStr = startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+        const dateStr = startDate.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "America/Sao_Paulo" });
+        const timeStr = startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
         const s = getAgendaStatus(apt.status as AptStatus, apt.payment_status);
         return (
           <Modal
@@ -1090,7 +1090,7 @@ export default function AgendaPage() {
                   <DetailLabel>Agendado em</DetailLabel>
                   <DetailValue>
                     {apt.created_at
-                      ? new Date(apt.created_at).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })
+                      ? new Date(apt.created_at).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric", timeZone: "America/Sao_Paulo" })
                       : "—"}
                   </DetailValue>
                 </DetailContent>

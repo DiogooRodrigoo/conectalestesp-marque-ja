@@ -401,7 +401,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    Promise.allSettled(notificationPromises).catch(() => {});
+    Promise.allSettled(notificationPromises).then((results) => {
+      results.forEach((r, i) => {
+        if (r.status === "rejected") {
+          console.error(`[WhatsApp] notification[${i}] rejected:`, r.reason);
+        } else if (r.status === "fulfilled") {
+          const val = r.value as { success?: boolean; error?: string } | undefined;
+          if (val && val.success === false) {
+            console.warn(`[WhatsApp] notification[${i}] failed:`, val.error);
+          }
+        }
+      });
+    });
 
     return NextResponse.json(
       {

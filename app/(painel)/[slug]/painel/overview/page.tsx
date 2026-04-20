@@ -66,7 +66,7 @@ function getLastNDaysRange(n: number) {
 
 function getTodayDate() {
   return new Date().toLocaleDateString("pt-BR", {
-    weekday: "long", day: "numeric", month: "long",
+    weekday: "long", day: "numeric", month: "long", timeZone: "America/Sao_Paulo",
   });
 }
 
@@ -770,9 +770,9 @@ export default function OverviewPage() {
         const apt = detailApt;
         const startDate = new Date(apt.start_at);
         const dateStr   = startDate.toLocaleDateString("pt-BR", {
-          weekday: "long", day: "numeric", month: "long", year: "numeric",
+          weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "America/Sao_Paulo",
         });
-        const timeStr = startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+        const timeStr = startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
         const s = getStatusMapEntry(apt.status, (apt as { payment_status?: string | null }).payment_status);
         return (
           <Modal

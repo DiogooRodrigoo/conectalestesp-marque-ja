@@ -83,8 +83,10 @@ export async function POST(request: NextRequest) {
           .from("appointments")
           .update({ confirmation_sent: true })
           .eq("id", appointment_id);
+      } else {
+        console.warn("[WhatsApp] pix/confirm client notify failed:", result.error);
       }
-    }).catch(() => {});
+    }).catch((err) => console.error("[WhatsApp] pix/confirm client notify error:", err));
 
     return NextResponse.json({ success: true });
   } catch (err) {
