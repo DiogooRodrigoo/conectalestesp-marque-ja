@@ -414,7 +414,8 @@ export default function StepPayment({
       });
     }, 1000);
 
-    // Polling de pagamento
+    // Polling de pagamento — checa imediatamente e depois a cada intervalo
+    checkStatus();
     pollingRef.current = setInterval(checkStatus, POLLING_INTERVAL_MS);
 
     return () => {
@@ -567,9 +568,9 @@ export default function StepPayment({
         </CopySection>
 
         <InstructionList>
-          <li>Abra o app do seu banco e acesse a opção PIX</li>
-          <li>Escaneie o QR Code ou use o código copia-e-cola</li>
-          <li>Confirme o pagamento de <strong>{formatPrice(amountCents)}</strong></li>
+          <li>Abra o app do seu banco e acesse <strong>PIX</strong></li>
+          <li>Escolha <strong>Pix Copia e Cola</strong> (não use &quot;Transferir&quot;)</li>
+          <li>Cole o código copiado e confirme o valor de <strong>{formatPrice(amountCents)}</strong></li>
           <li>Aguarde a confirmação do estabelecimento nesta tela</li>
         </InstructionList>
 

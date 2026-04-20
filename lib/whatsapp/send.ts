@@ -11,6 +11,10 @@ export async function sendWhatsApp(
   to: string,
   message: string
 ): Promise<SendResult> {
+  if (process.env.WHATSAPP_ENABLED !== "true") {
+    return { success: false, provider: null, error: "WhatsApp notifications disabled" };
+  }
+
   const apiUrl = process.env.EVOLUTION_API_URL;
   const apiKey = process.env.EVOLUTION_API_KEY;
   const instance = process.env.EVOLUTION_INSTANCE;

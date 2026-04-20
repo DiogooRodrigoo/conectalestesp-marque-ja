@@ -503,14 +503,14 @@ const WelcomeClose = styled.button`
 
 const WELCOME_KEY = "mj_welcome_dismissed";
 
-const statusMap: Record<string, { label: string; variant: "success" | "orange" | "default" | "danger" | "warning" }> = {
-  confirmed:        { label: "Confirmado",   variant: "orange"  },
-  confirmed_paid:   { label: "PIX Pago",     variant: "success" },
-  pending:          { label: "Pendente",     variant: "default" },
-  completed:        { label: "Concluído",    variant: "success" },
-  cancelled:        { label: "Cancelado",    variant: "danger"  },
-  no_show:          { label: "Faltou",       variant: "warning" },
-  awaiting_payment: { label: "Aguard. PIX",  variant: "warning" },
+const statusMap: Record<string, { label: string; variant: "success" | "orange" | "default" | "danger" | "warning" | "blue" }> = {
+  confirmed:        { label: "Confirmado",      variant: "blue"    },
+  confirmed_paid:   { label: "PIX Confirmado",  variant: "success" },
+  pending:          { label: "Pendente",        variant: "default" },
+  completed:        { label: "Concluído",       variant: "success" },
+  cancelled:        { label: "Cancelado",       variant: "danger"  },
+  no_show:          { label: "Não Compareceu",  variant: "danger"  },
+  awaiting_payment: { label: "Aguardando PIX",  variant: "warning" },
 };
 
 function getStatusMapEntry(status: string, paymentStatus?: string | null) {

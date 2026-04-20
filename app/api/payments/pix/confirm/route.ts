@@ -24,9 +24,9 @@ export async function POST(request: NextRequest) {
     const { data: appointment, error: apptError } = await supabase
       .from("appointments")
       .select(`
-        id, status, payment_status, business_id,
+        id, status, payment_status, payment_expires_at, business_id,
         client_name, client_phone, start_at,
-        businesses ( id, name, phone_whatsapp )
+        businesses ( id, name, phone_whatsapp, owner_id )
       `)
       .eq("id", appointment_id)
       .single();
@@ -35,11 +35,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
     }
 
+    // BUG-15: verifica que o admin autenticado é dono do negócio do agendamento
+    const business = appointment.businesses as { id: string; name: string; phone_whatsapp: string | null; owner_id: string } | null;
+    if (!business || business.owner_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     if (appointment.payment_status === "paid") {
       return NextResponse.json({ success: true, already_paid: true });
     }
 
     if (appointment.status === "cancelled" || appointment.payment_status === "expired") {
+      return NextResponse.json({ error: "Agendamento cancelado ou expirado" }, { status: 409 });
+    }
+
+    // BUG-06: rejeita confirmação se o prazo já expirou (mesmo que o cron ainda não tenha rodado)
+    if (appointment.payment_expires_at && new Date() > new Date(appointment.payment_expires_at)) {
+      await supabase
+        .from("appointments")
+        .update({ payment_status: "expired", status: "cancelled" })
+        .eq("id", appointment_id);
       return NextResponse.json({ error: "Agendamento cancelado ou expirado" }, { status: 409 });
     }
 
@@ -62,7 +77,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Notifica o cliente via WhatsApp
-    const business = appointment.businesses as { name: string; phone_whatsapp: string | null } | null;
     const businessName = business?.name ?? "Estabelecimento";
     const startDt = new Date(appointment.start_at);
     const SP = "America/Sao_Paulo";

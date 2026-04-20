@@ -1,7 +1,7 @@
 "use client";
 
 import styled from "styled-components";
-import { ArrowLeft, CheckCircle, Users } from "@phosphor-icons/react";
+import { ArrowLeft, CheckCircle } from "@phosphor-icons/react";
 import { Professional } from "@/types/database";
 
 interface Props {
@@ -172,27 +172,9 @@ export default function StepProfessionalSelect({
       </BackButton>
 
       <Title>Escolha o profissional</Title>
-      <Subtitle>Ou deixe que encontremos o melhor disponível para você</Subtitle>
+      <Subtitle>Selecione com quem deseja ser atendido</Subtitle>
 
       <ProfessionalList>
-        {/* "No preference" card */}
-        <ProfCard
-          $selected={anySelected}
-          onClick={() => onSelect(null)}
-          type="button"
-        >
-          <AvatarCircle $any>
-            <Users size={20} weight="fill" />
-          </AvatarCircle>
-          <ProfInfo>
-            <ProfName>Qualquer disponível</ProfName>
-            <ProfBio>Atribuímos o melhor profissional para você</ProfBio>
-          </ProfInfo>
-          {anySelected && (
-            <CheckBadge><CheckCircle size={20} weight="fill" /></CheckBadge>
-          )}
-        </ProfCard>
-
         {/* Individual professional cards */}
         {active.map((prof) => {
           const isSelected = selectedId === prof.id;

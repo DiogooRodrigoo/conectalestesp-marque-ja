@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     const { data: appointment, error: apptError } = await supabase
       .from("appointments")
-      .select("id, status, payment_status, business_id, payment_amount_cents, client_name, client_phone")
+      .select("id, status, payment_status, payment_id, business_id, payment_amount_cents, client_name, client_phone, start_at")
       .eq("id", body.appointment_id)
       .eq("business_id", body.business_id)
       .single();
@@ -79,11 +79,26 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", body.appointment_id);
 
-    // Avisa o estabelecimento que um cliente está aguardando confirmação do PIX
-    if (business.phone_whatsapp) {
+    // Avisa o estabelecimento apenas na primeira geração do QR (evita duplicatas em retries)
+    const isFirstGeneration = !appointment.payment_id;
+    if (business.phone_whatsapp && isFirstGeneration) {
+      const SP = "America/Sao_Paulo";
+      const startDt = new Date(appointment.start_at);
+      const dataFormatada = startDt.toLocaleDateString("pt-BR", {
+        timeZone: SP, weekday: "long", day: "numeric", month: "long",
+      });
+      const horaFormatada = startDt.toLocaleTimeString("pt-BR", {
+        timeZone: SP, hour: "2-digit", minute: "2-digit",
+      });
       sendWhatsApp(
         business.phone_whatsapp,
-        `💰 *PIX aguardando confirmação*\n\nO cliente *${appointment.client_name}* gerou um PIX de *${formatPrice(amountCents)}*.\n\nQuando receber o pagamento, confirme no painel do MarqueJá. ✅`
+        `💰 *PIX aguardando confirmação*\n\n` +
+        `👤 Cliente: *${appointment.client_name}*\n` +
+        `📅 Data: *${dataFormatada}*\n` +
+        `⏰ Horário: *${horaFormatada}*\n` +
+        `💵 Valor: *${formatPrice(amountCents)}*\n\n` +
+        `Após confirmar que o valor caiu na sua conta, acesse o MarqueJá e confirme o recebimento. ✅\n\n` +
+        `⚠️ Somente após sua confirmação o cliente terá o agendamento finalizado.`
       ).then((r) => {
         if (!r.success) console.warn("[WhatsApp] pix/create owner notify failed:", r.error);
       }).catch((err) => console.error("[WhatsApp] pix/create owner notify error:", err));

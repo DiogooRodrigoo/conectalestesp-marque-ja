@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
       .eq("business_id", business_id)
       .gte("start_at", dayStart)
       .lte("start_at", dayEnd)
-      .in("status", ["confirmed", "pending"]);
+      .in("status", ["confirmed", "pending", "awaiting_payment"]);
 
     if (professional_id) {
       appointmentsQuery = appointmentsQuery.eq("professional_id", professional_id);

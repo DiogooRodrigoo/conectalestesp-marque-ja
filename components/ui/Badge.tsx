@@ -2,7 +2,7 @@
 
 import styled from "styled-components";
 
-type BadgeVariant = "default" | "success" | "danger" | "warning" | "info" | "orange";
+type BadgeVariant = "default" | "success" | "danger" | "warning" | "info" | "orange" | "blue";
 type BadgeSize = "sm" | "md";
 
 interface BadgeProps {
@@ -48,6 +48,12 @@ const colors: Record<BadgeVariant, { bg: string; text: string; border: string; d
     text: "var(--color-primary)",
     border: "rgba(var(--color-primary-rgb),0.2)",
     dot: "#f97316",
+  },
+  blue: {
+    bg: "rgba(59,130,246,0.1)",
+    text: "#3b82f6",
+    border: "rgba(59,130,246,0.2)",
+    dot: "#3b82f6",
   },
 };
 

@@ -58,18 +58,18 @@ function toLocalDatetimeValue(date: Date) {
 
 type AptStatus = "confirmed" | "pending" | "completed" | "cancelled" | "no_show" | "awaiting_payment";
 
-const statusMap: Record<AptStatus, { label: string; variant: "success" | "orange" | "default" | "danger" | "warning" }> = {
-  confirmed:        { label: "Confirmado",     variant: "orange"  },
-  pending:          { label: "Pendente",       variant: "default" },
-  completed:        { label: "Concluído",      variant: "success" },
-  cancelled:        { label: "Cancelado",      variant: "danger"  },
-  no_show:          { label: "Faltou",         variant: "warning" },
-  awaiting_payment: { label: "Aguard. PIX",    variant: "warning" },
+const statusMap: Record<AptStatus, { label: string; variant: "success" | "orange" | "default" | "danger" | "warning" | "blue" }> = {
+  confirmed:        { label: "Confirmado",      variant: "blue"    },
+  pending:          { label: "Pendente",        variant: "default" },
+  completed:        { label: "Concluído",       variant: "success" },
+  cancelled:        { label: "Cancelado",       variant: "danger"  },
+  no_show:          { label: "Não Compareceu",  variant: "danger"  },
+  awaiting_payment: { label: "Aguardando PIX",  variant: "warning" },
 };
 
 function getAgendaStatus(status: AptStatus, paymentStatus?: string | null) {
   if (status === "confirmed" && paymentStatus === "paid") {
-    return { label: "PIX Pago", variant: "success" as const };
+    return { label: "PIX Confirmado", variant: "success" as const };
   }
   return statusMap[status] ?? statusMap.pending;
 }
@@ -78,6 +78,7 @@ const STATUS_OPTIONS: { value: AptStatus; label: string }[] = [
   { value: "pending",   label: "Pendente" },
   { value: "confirmed", label: "Confirmado" },
   { value: "completed", label: "Concluído" },
+  { value: "no_show",   label: "Não Compareceu" },
 ];
 
 // ─── Animations ───────────────────────────────────────────────────────────────
@@ -617,6 +618,11 @@ export default function AgendaPage() {
   // Detail modal
   const [detailApt, setDetailApt] = useState<AppointmentWithRelations | null>(null);
 
+  // Cancel modal
+  const [cancelAptId, setCancelAptId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+
   // New appointment modal
   const [newAptOpen, setNewAptOpen] = useState(false);
   const [newAptForm, setNewAptForm] = useState(emptyNewApt(today));
@@ -649,6 +655,7 @@ export default function AgendaPage() {
       .from("appointments")
       .select("*, service:services(*), professional:professionals(*)")
       .eq("business_id", business.id)
+      .neq("status", "cancelled")
       .gte("start_at", start)
       .lte("start_at", end)
       .order("start_at");
@@ -726,6 +733,35 @@ export default function AgendaPage() {
     setDetailApt((prev) =>
       prev?.id === aptId ? { ...prev, status: "confirmed" as AptStatus, payment_status: "paid" } : prev
     );
+  }
+
+  async function cancelAppointment(aptId: string, reason: string) {
+    setCancelling(true);
+    try {
+      const res = await fetch("/api/appointments/admin-cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointment_id: aptId, reason }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        console.error("[cancelAppointment] error:", data.error);
+        return;
+      }
+    } catch (err) {
+      console.error("[cancelAppointment] fetch error:", err);
+      return;
+    } finally {
+      setCancelling(false);
+    }
+    setAppointments((prev) =>
+      prev.map((a) => a.id === aptId ? { ...a, status: "cancelled" as AptStatus } : a)
+    );
+    setDetailApt((prev) =>
+      prev?.id === aptId ? { ...prev, status: "cancelled" as AptStatus } : prev
+    );
+    setCancelAptId(null);
+    setCancelReason("");
   }
 
   async function changeStatus(aptId: string, newStatus: AptStatus) {
@@ -853,7 +889,7 @@ export default function AgendaPage() {
         </StatPill>
         <StatPill>
           <StatIcon $color="var(--color-success)"><CheckCircle size={16} weight="fill" /></StatIcon>
-          <div><StatValue>{completed}</StatValue><StatLabel>Pagos</StatLabel></div>
+          <div><StatValue>{completed}</StatValue><StatLabel>Concluídos</StatLabel></div>
         </StatPill>
         <StatPill>
           <StatIcon $color="#a1a1aa"><Clock size={16} weight="fill" /></StatIcon>
@@ -990,6 +1026,14 @@ export default function AgendaPage() {
                     ✓ Confirmar recebimento do PIX
                   </Button>
                 )}
+                {apt.status !== "cancelled" && apt.status !== "completed" && apt.status !== "no_show" && (
+                  <Button
+                    variant="danger"
+                    onClick={() => { setCancelAptId(apt.id); setCancelReason(""); }}
+                  >
+                    Cancelar agendamento
+                  </Button>
+                )}
                 <Button variant="ghost" onClick={() => setDetailApt(null)}>Fechar</Button>
               </>
             }
@@ -1099,6 +1143,41 @@ export default function AgendaPage() {
           </Modal>
         );
       })()}
+
+      {/* ─── Cancel Confirmation Modal ─────────────────────────────────────── */}
+      <Modal
+        open={!!cancelAptId}
+        onClose={() => { setCancelAptId(null); setCancelReason(""); }}
+        title="Cancelar agendamento"
+        description="O cliente será notificado via WhatsApp. Essa ação não pode ser desfeita."
+        size="sm"
+        footer={
+          <>
+            <Button
+              variant="danger"
+              onClick={() => cancelAptId && cancelAppointment(cancelAptId, cancelReason)}
+              disabled={cancelling}
+            >
+              {cancelling ? "Cancelando..." : "Confirmar cancelamento"}
+            </Button>
+            <Button variant="ghost" onClick={() => { setCancelAptId(null); setCancelReason(""); }}>
+              Voltar
+            </Button>
+          </>
+        }
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <label style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-muted)" }}>
+            Motivo do cancelamento <span style={{ fontWeight: 400 }}>(opcional)</span>
+          </label>
+          <FieldTextarea
+            placeholder="Ex: Profissional indisponível, feriado, etc."
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            rows={3}
+          />
+        </div>
+      </Modal>
 
       {/* ─── New Appointment Modal ──────────────────────────────────────────── */}
       <Modal

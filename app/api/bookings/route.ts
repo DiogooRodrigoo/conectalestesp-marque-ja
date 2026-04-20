@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
         .in("client_phone", phoneVariants)
         .gte("start_at", dayStart)
         .lte("start_at", dayEnd)
-        .in("status", ["confirmed", "pending"])
+        .in("status", ["confirmed", "pending", "awaiting_payment"])
         .limit(1)
         .single();
 
@@ -210,6 +210,10 @@ export async function POST(request: NextRequest) {
     }
     if (servicesResult.error || !servicesResult.data || servicesResult.data.length === 0) {
       return NextResponse.json({ error: "Services not found" }, { status: 404 });
+    }
+
+    if (servicesResult.data.length !== body.service_ids.length) {
+      return NextResponse.json({ error: "One or more services not found" }, { status: 404 });
     }
 
     const business = businessResult.data;
@@ -261,16 +265,21 @@ export async function POST(request: NextRequest) {
       professional = prof;
     }
 
-    // ── Verifica conflito de horário com profissional ─────────────────────────
-    if (body.professional_id) {
-      // BUG-02: awaiting_payment também bloqueia o slot
-      const { data: conflicts } = await supabase
+    // ── Verifica conflito de horário ──────────────────────────────────────────
+    {
+      const conflictQuery = supabase
         .from("appointments")
         .select("id")
-        .eq("professional_id", body.professional_id)
+        .eq("business_id", body.business_id)
         .in("status", ["confirmed", "pending", "awaiting_payment"])
         .lt("start_at", endAt.toISOString())
         .gt("end_at", startAt.toISOString());
+
+      if (body.professional_id) {
+        conflictQuery.eq("professional_id", body.professional_id);
+      }
+
+      const { data: conflicts } = await conflictQuery;
 
       if (conflicts && conflicts.length > 0) {
         return NextResponse.json(

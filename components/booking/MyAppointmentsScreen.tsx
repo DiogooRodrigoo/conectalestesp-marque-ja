@@ -304,20 +304,22 @@ const PixPayBtn = styled.button`
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function statusColor(status: string): string {
+function statusColor(status: string, paymentStatus?: string | null): string {
+  if (status === "confirmed" && paymentStatus === "paid") return "#22c55e";
   switch (status) {
-    case "confirmed":        return "var(--color-primary)";
+    case "confirmed":        return "#3b82f6";
     case "completed":        return "var(--color-success)";
     case "cancelled":        return "var(--color-danger)";
-    case "no_show":          return "#EF4444";
+    case "no_show":          return "#ef4444";
     case "awaiting_payment": return "#D97706";
     default:                 return "var(--color-text-muted)";
   }
 }
 
-function statusBg(status: string): string {
+function statusBg(status: string, paymentStatus?: string | null): string {
+  if (status === "confirmed" && paymentStatus === "paid") return "rgba(34,197,94,0.12)";
   switch (status) {
-    case "confirmed":        return "rgba(var(--color-primary-rgb),0.12)";
+    case "confirmed":        return "rgba(59,130,246,0.12)";
     case "completed":        return "rgba(34,197,94,0.12)";
     case "cancelled":        return "rgba(239,68,68,0.12)";
     case "no_show":          return "rgba(239,68,68,0.12)";
@@ -327,13 +329,14 @@ function statusBg(status: string): string {
 }
 
 function statusLabel(status: string, paymentStatus?: string | null): string {
-  if (status === "confirmed" && paymentStatus === "paid") return "PIX Pago";
+  if (status === "confirmed" && paymentStatus === "paid") return "Confirmado ✓";
   switch (status) {
     case "confirmed":        return "Confirmado";
+    case "pending":          return "Em análise";
     case "completed":        return "Concluído";
     case "cancelled":        return "Cancelado";
     case "no_show":          return "Não compareceu";
-    case "awaiting_payment": return "Aguard. PIX";
+    case "awaiting_payment": return "Aguardando pagamento";
     default:                 return status;
   }
 }
