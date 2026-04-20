@@ -659,15 +659,15 @@ function darkenHex(hex: string, amount = 20): string {
 }
 
 export default function BookingShell({ business, services, professionals }: BookingShellProps) {
-  const primaryColor = "#F97316"; // Conecta Leste — cor fixa independente do estabelecimento
+  const primaryColor = business.primary_color ?? "#F97316";
 
   useEffect(() => {
     const prev = document.documentElement.getAttribute("data-theme");
     document.documentElement.removeAttribute("data-theme");
 
-    const rgb  = "249, 115, 22";
-    const dark = "#ea6c0e";
-    const hero = "#c45a0a";
+    const rgb  = hexToRgb(primaryColor);
+    const dark = darkenHex(primaryColor, 15);
+    const hero = darkenHex(primaryColor, 30);
 
     document.documentElement.style.setProperty("--color-primary",          primaryColor);
     document.documentElement.style.setProperty("--color-primary-dark",     dark);
@@ -679,7 +679,7 @@ export default function BookingShell({ business, services, professionals }: Book
       if (prev) document.documentElement.setAttribute("data-theme", prev);
       else document.documentElement.removeAttribute("data-theme");
     };
-  }, []);
+  }, [primaryColor]);
 
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);

@@ -26,6 +26,7 @@ interface Props {
   appointment: AppointmentInfo;
   businessName: string;
   businessSlug: string;
+  businessColor?: string;
   isPastDeadline: boolean;
 }
 
@@ -60,11 +61,11 @@ const Header = styled.header`
   margin-bottom: 24px;
 `;
 
-const LogoBox = styled.div`
+const LogoBox = styled.div<{ $color: string }>`
   width: 48px;
   height: 48px;
   border-radius: var(--radius-md);
-  background: #F97316;
+  background: ${({ $color }) => $color};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -121,8 +122,8 @@ const SummaryItem = styled.div`
   gap: 10px;
 `;
 
-const SummaryIcon = styled.div`
-  color: #F97316;
+const SummaryIcon = styled.div<{ $color: string }>`
+  color: ${({ $color }) => $color};
   display: flex;
   align-items: center;
   flex-shrink: 0;
@@ -286,6 +287,7 @@ export default function CancelConfirm({
   appointment,
   businessName,
   businessSlug,
+  businessColor = "#F97316",
   isPastDeadline,
 }: Props) {
   const [loading, setLoading] = useState(false);
@@ -326,7 +328,7 @@ export default function CancelConfirm({
   return (
     <Wrapper>
       <Header>
-        <LogoBox>{logoInitials}</LogoBox>
+        <LogoBox $color={businessColor}>{logoInitials}</LogoBox>
         <BusinessName>{businessName}</BusinessName>
       </Header>
 
@@ -352,7 +354,7 @@ export default function CancelConfirm({
 
             <SummaryBox>
               <SummaryItem>
-                <SummaryIcon>
+                <SummaryIcon $color={businessColor}>
                   <Tag size={15} />
                 </SummaryIcon>
                 <SummaryContent>
@@ -363,7 +365,7 @@ export default function CancelConfirm({
 
               {appointment.professional_name && (
                 <SummaryItem>
-                  <SummaryIcon>
+                  <SummaryIcon $color={businessColor}>
                     <User size={15} />
                   </SummaryIcon>
                   <SummaryContent>
@@ -374,7 +376,7 @@ export default function CancelConfirm({
               )}
 
               <SummaryItem>
-                <SummaryIcon>
+                <SummaryIcon $color={businessColor}>
                   <CalendarBlank size={15} />
                 </SummaryIcon>
                 <SummaryContent>
@@ -384,7 +386,7 @@ export default function CancelConfirm({
               </SummaryItem>
 
               <SummaryItem>
-                <SummaryIcon>
+                <SummaryIcon $color={businessColor}>
                   <Clock size={15} />
                 </SummaryIcon>
                 <SummaryContent>

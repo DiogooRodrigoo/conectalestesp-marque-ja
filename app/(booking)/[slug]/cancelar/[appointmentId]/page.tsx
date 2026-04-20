@@ -14,7 +14,7 @@ export default async function CancelPage({ params }: Props) {
 
   const { data: business } = await supabase
     .from("businesses")
-    .select("id, name, slug")
+    .select("id, name, slug, primary_color")
     .eq("slug", slug)
     .eq("booking_enabled", true)
     .single();
@@ -69,6 +69,7 @@ export default async function CancelPage({ params }: Props) {
       }}
       businessName={business.name}
       businessSlug={business.slug}
+      businessColor={business.primary_color ?? "#F97316"}
       isPastDeadline={isPastDeadline}
     />
   );
