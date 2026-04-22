@@ -328,7 +328,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to create appointment" }, { status: 500 });
     }
 
-    const rpcData = rpcResult as { error?: string; id?: string; status?: string; start_at?: string; end_at?: string; professional_id?: string };
+    const rpcData = rpcResult as unknown as { error?: string; id?: string; status?: string; start_at?: string; end_at?: string; professional_id?: string };
 
     if (rpcData?.error === "slot_unavailable") {
       return NextResponse.json(

@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
           pixKey:       existingKey,
           merchantName: business.name,
           merchantCity: existingCity,
-          amountCents:  appointment.payment_amount_cents,
+          amountCents:  appointment.payment_amount_cents ?? 0,
           txid:         appointment.payment_id,
         });
         const existingQr = await generatePixQRCodeBase64(existingBrCode);

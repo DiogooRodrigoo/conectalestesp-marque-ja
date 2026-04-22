@@ -485,13 +485,51 @@ export type Database = {
           },
         ]
       }
+      appointment_audit_log: {
+        Row: {
+          id: string
+          appointment_id: string
+          changed_by: string | null
+          old_status: string | null
+          new_status: string | null
+          note: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          appointment_id: string
+          changed_by?: string | null
+          old_status?: string | null
+          new_status?: string | null
+          note?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          appointment_id?: string
+          changed_by?: string | null
+          old_status?: string | null
+          new_status?: string | null
+          note?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_audit_log_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       client_sessions: {
         Row: {
           id: string
           business_id: string
           phone: string
           client_name: string
-          session_token: string
+          session_token_hash: string
           created_at: string
           expires_at: string
           last_used_at: string
@@ -501,7 +539,7 @@ export type Database = {
           business_id: string
           phone: string
           client_name: string
-          session_token: string
+          session_token_hash: string
           created_at?: string
           expires_at: string
           last_used_at?: string
@@ -511,7 +549,7 @@ export type Database = {
           business_id?: string
           phone?: string
           client_name?: string
-          session_token?: string
+          session_token_hash?: string
           created_at?: string
           expires_at?: string
           last_used_at?: string
@@ -719,6 +757,24 @@ export type Database = {
           appointments_week: number
           attendance_rate: number
         }[]
+      }
+      book_appointment_atomic: {
+        Args: {
+          p_business_id: string
+          p_service_id: string
+          p_professional_id: string | null
+          p_client_name: string
+          p_client_phone: string
+          p_start_at: string
+          p_end_at: string
+          p_status: string
+          p_notes?: string | null
+          p_payment_required: boolean
+          p_payment_status?: string | null
+          p_payment_amount_cents?: number | null
+          p_verification_id: string
+        }
+        Returns: Json
       }
       is_hub_admin: { Args: never; Returns: boolean }
     }
