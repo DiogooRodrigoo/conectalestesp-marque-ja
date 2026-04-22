@@ -183,18 +183,16 @@ export function getAvailableSlots(params: GetAvailableSlotsParams): string[] {
 
   const allBlockedRanges = [...appointmentRanges, ...blockedRanges, ...lunchRange];
 
-  // Determine "now" in minutes if filtering for today
-  const today = new Date();
-  const isToday =
-    today.getFullYear() === dateObj.getFullYear() &&
-    today.getMonth() === dateObj.getMonth() &&
-    today.getDate() === dateObj.getDate();
+  // B-01: Determine "today" in SP timezone, not server UTC, so slots near midnight
+  // are correctly included/excluded regardless of the server clock timezone.
+  const now = new Date();
+  const nowSpMinutes = (now.getUTCHours() * 60 + now.getUTCMinutes() - BRAZIL_OFFSET_MIN + 1440) % 1440;
+  // "Today" in SP: compute the SP local date string and compare with the requested date
+  const spNow = new Date(now.getTime() - BRAZIL_OFFSET_MIN * 60_000);
+  const spTodayStr = spNow.toISOString().slice(0, 10); // "YYYY-MM-DD" in SP local
+  const isToday = date === spTodayStr;
 
-  // Convert current UTC time to Brazil local minutes for comparison with slot times
-  // BUG-11: clamp to 0 — between 00:00 and 02:59 UTC the subtraction is negative
-  const nowMinutes = isToday
-    ? Math.max(0, today.getUTCHours() * 60 + today.getUTCMinutes() - BRAZIL_OFFSET_MIN)
-    : 0;
+  const nowMinutes = isToday ? nowSpMinutes : 0;
 
   // Filter out unavailable slots
   const available = candidates.filter((slotStart) => {

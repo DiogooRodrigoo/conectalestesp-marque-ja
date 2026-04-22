@@ -16,6 +16,7 @@ import {
 import { Business, Service, Professional } from "@/types/database";
 import { BookingState, CreatedAppointment } from "./BookingShell";
 import { formatPrice, formatDuration } from "@/lib/utils/formatters";
+import { fetchWithRetry } from "@/lib/utils/fetchWithRetry";
 
 interface DuplicateInfo {
   id: string;
@@ -349,7 +350,7 @@ export default function StepConfirmation({
     setError(null);
 
     try {
-      const res = await fetch("/api/bookings", {
+      const res = await fetchWithRetry("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

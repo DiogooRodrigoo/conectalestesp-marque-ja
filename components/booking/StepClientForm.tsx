@@ -253,11 +253,19 @@ export default function StepClientForm({
 
     if (!sessionActive) {
       const cleanPhone = clientPhone.replace(/\D/g, "");
+      // M-04: await OTP send before advancing so errors surface instead of being silenced
       fetch("/api/verify/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: cleanPhone, business_id: businessId }),
-      }).catch(() => {});
+      }).then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          console.warn("[StepClientForm] OTP send failed:", data?.error ?? res.status);
+        }
+      }).catch((err) => {
+        console.error("[StepClientForm] OTP send network error:", err);
+      });
     }
 
     onNext();

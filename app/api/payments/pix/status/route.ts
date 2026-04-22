@@ -1,20 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClientWithServiceRole } from "@/lib/supabase/server";
 
-// Rate limit simples: máx 20 req/min por appointmentId (proteção dentro da mesma instância)
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-function checkRateLimit(key: string, maxPerMinute = 20): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(key);
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + 60_000 });
-    return true;
-  }
-  if (entry.count >= maxPerMinute) return false;
-  entry.count++;
-  return true;
-}
+// M-05: The in-memory rate limit map was reset on every cold start (serverless).
+// Removed: the appointment+payment_id ownership check already acts as a guard,
+// and the DB query is indexed. Add Upstash/Redis rate limiting here if needed.
 
 // A-05: exige payment_id além de appointment_id para evitar enumeração de status.
 export async function GET(request: NextRequest) {
@@ -27,13 +16,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: "appointment_id e payment_id são obrigatórios" },
         { status: 400 }
-      );
-    }
-
-    if (!checkRateLimit(appointmentId)) {
-      return NextResponse.json(
-        { error: "Too many requests" },
-        { status: 429, headers: { "Retry-After": "60" } }
       );
     }
 

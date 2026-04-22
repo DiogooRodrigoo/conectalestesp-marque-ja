@@ -1,5 +1,10 @@
+import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClientWithServiceRole } from "@/lib/supabase/server";
+
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
 
 // POST /api/auth/client/session/exchange
 // Exchanges a valid persistent session token for a fresh phone verification token.
@@ -18,11 +23,13 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServerSupabaseClientWithServiceRole();
 
-    // Validate session
+    const tokenHash = hashToken(session_token);
+
+    // Validate session using hashed token (M-01)
     const { data: session, error: sessionErr } = await supabase
       .from("client_sessions")
       .select("id, phone, client_name, expires_at")
-      .eq("session_token", session_token)
+      .eq("session_token_hash", tokenHash)
       .eq("business_id", business_id)
       .single();
 
@@ -31,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (new Date(session.expires_at) < new Date()) {
-      await supabase.from("client_sessions").delete().eq("session_token", session_token);
+      await supabase.from("client_sessions").delete().eq("session_token_hash", tokenHash);
       return NextResponse.json({ error: "Sessão expirada. Faça login novamente." }, { status: 401 });
     }
 
@@ -61,7 +68,7 @@ export async function POST(request: NextRequest) {
     await supabase
       .from("client_sessions")
       .update({ last_used_at: new Date().toISOString() })
-      .eq("session_token", session_token);
+      .eq("session_token_hash", tokenHash);
 
     return NextResponse.json({
       verification_token: verificationToken,

@@ -723,7 +723,9 @@ export default function BookingShell({ business, services, professionals }: Book
       return;
     }
 
-    fetch(`/api/auth/client/session?token=${encodeURIComponent(parsed.token)}&business_id=${business.id}`)
+    fetch(`/api/auth/client/session?business_id=${business.id}`, {
+        headers: { Authorization: `Bearer ${parsed.token}` },
+      })
       .then((r) => r.json())
       .then((data) => {
         if (data.phone) {
@@ -789,7 +791,13 @@ export default function BookingShell({ business, services, professionals }: Book
       ? (business.address as { formatted?: string }).formatted ?? "" : "";
 
   const logoUrl = business.logo_url ?? "/conecta-logo.jpeg";
-  const status = getBusinessStatus(business);
+
+  // I-02: Recompute open/closed status every 60 s so the badge updates without reload
+  const [status, setStatus] = useState(() => getBusinessStatus(business));
+  useEffect(() => {
+    const id = setInterval(() => setStatus(getBusinessStatus(business)), 60_000);
+    return () => clearInterval(id);
+  }, [business]);
 
   // ── Shared step content renderer ──────────────────────────────────────────
   function renderStepContent() {
@@ -860,7 +868,10 @@ export default function BookingShell({ business, services, professionals }: Book
             setStep(0);
           }}
           onLogout={savedSession ? () => {
-            fetch(`/api/auth/client/session?token=${encodeURIComponent(savedSession.sessionToken)}&business_id=${business.id}`, { method: "DELETE" });
+            fetch(`/api/auth/client/session?business_id=${business.id}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${savedSession.sessionToken}` },
+            });
             clearSession();
             setBooking((b) => ({ ...b, clientPhone: "", clientName: "" }));
             setVerificationToken(null);

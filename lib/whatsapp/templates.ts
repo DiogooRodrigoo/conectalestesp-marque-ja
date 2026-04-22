@@ -1,5 +1,11 @@
 // WhatsApp message templates for appointment notifications
 
+// B-02: Strip WhatsApp formatting characters from user-provided text to prevent
+// injection of bold/italic/strike/code/link formatting into notifications.
+function sanitize(text: string): string {
+  return text.replace(/[*_~`[\]|]/g, "").trim();
+}
+
 export interface ConfirmationParams {
   clientName: string;
   businessName: string;
@@ -57,10 +63,11 @@ export function confirmationMessage(params: ConfirmationParams): string {
     bookingId,
   } = params;
 
+  const safeClientName = sanitize(clientName);
   const lines = [
     `✅ *Agendamento Confirmado!*`,
     ``,
-    `Oi, ${clientName}! Seu horário foi agendado com sucesso.`,
+    `Oi, ${safeClientName}! Seu horário foi agendado com sucesso.`,
     ``,
     `📋 *Detalhes do agendamento:*`,
     `• Estabelecimento: ${businessName}`,
@@ -100,10 +107,11 @@ export function reminderMessage(params: ReminderParams): string {
     address,
   } = params;
 
+  const safeClientName = sanitize(clientName);
   const lines = [
     `⏰ *Lembrete de Agendamento*`,
     ``,
-    `Oi, ${clientName}! Passando para lembrar do seu horário de hoje.`,
+    `Oi, ${safeClientName}! Passando para lembrar do seu horário de hoje.`,
     ``,
     `📋 *Resumo:*`,
     `• ${businessName}`,
@@ -136,12 +144,14 @@ export function ownerNotificationMessage(params: OwnerNotificationParams): strin
     notes,
   } = params;
 
+  const safeClientName = sanitize(clientName);
+  const safeNotes      = notes ? sanitize(notes) : null;
   const lines = [
     `🔔 *Novo Agendamento — ${businessName}*`,
     ``,
     `Oi, ${ownerName}! Você recebeu um novo agendamento.`,
     ``,
-    `👤 *Cliente:* ${clientName}`,
+    `👤 *Cliente:* ${safeClientName}`,
     `📱 *Telefone:* ${clientPhone}`,
     `✂️ *Serviço:* ${serviceName}`,
     `👨‍💼 *Profissional:* ${professionalName}`,
@@ -149,8 +159,8 @@ export function ownerNotificationMessage(params: OwnerNotificationParams): strin
     `⏰ *Horário:* ${time}`,
   ];
 
-  if (notes) {
-    lines.push(`📝 *Observações:* ${notes}`);
+  if (safeNotes) {
+    lines.push(`📝 *Observações:* ${safeNotes}`);
   }
 
   lines.push(``, `_Marque Já — Plataforma de Agendamentos_`);
@@ -164,10 +174,12 @@ export function ownerNotificationMessage(params: OwnerNotificationParams): strin
 export function cancellationMessage(params: CancellationParams): string {
   const { clientName, businessName, serviceName, date, time, reason } = params;
 
+  const safeClientName = sanitize(clientName);
+  const safeReason     = reason ? sanitize(reason) : null;
   const lines = [
     `❌ *Agendamento Cancelado*`,
     ``,
-    `Oi, ${clientName}. Seu agendamento foi cancelado.`,
+    `Oi, ${safeClientName}. Seu agendamento foi cancelado.`,
     ``,
     `📋 *Agendamento cancelado:*`,
     `• Estabelecimento: ${businessName}`,
@@ -175,8 +187,8 @@ export function cancellationMessage(params: CancellationParams): string {
     `• Data: ${date} às ${time}`,
   ];
 
-  if (reason) {
-    lines.push(``, `📝 *Motivo:* ${reason}`);
+  if (safeReason) {
+    lines.push(``, `📝 *Motivo:* ${safeReason}`);
   }
 
   lines.push(

@@ -311,6 +311,14 @@ export default function ConfiguracoesPage() {
   const [hours, setHours] = useState<BusinessHours[]>([]);
   const [copied, setCopied] = useState(false);
 
+  // ── Lunch break state ─────────────────────────────────────────────────────
+  const [lunchEditing, setLunchEditing]   = useState(false);
+  const [lunchStart,   setLunchStart]     = useState("");
+  const [lunchEnd,     setLunchEnd]       = useState("");
+  const [lunchEnabled, setLunchEnabled]   = useState(false);
+  const [savingLunch,  setSavingLunch]    = useState(false);
+  const [lunchFeedback, setLunchFeedback] = useState<{ msg: string; error: boolean } | null>(null);
+
   // ── PIX state ──────────────────────────────────────────────────────────────
   const [pixEnabled, setPixEnabled] = useState(false);
   const [pixKey, setPixKey] = useState("");
@@ -332,6 +340,11 @@ export default function ConfiguracoesPage() {
       .order("day_of_week")
       .then(({ data }) => setHours(data ?? []));
 
+    // Popula campos de almoço
+    setLunchEnabled(!!(business.lunch_start && business.lunch_end));
+    setLunchStart(business.lunch_start?.slice(0, 5) ?? "12:00");
+    setLunchEnd(business.lunch_end?.slice(0, 5)   ?? "13:00");
+
     // Popula campos PIX com valores atuais
     setPixEnabled(business.pix_enabled ?? false);
     setPixKey(business.pix_key ?? "");
@@ -340,6 +353,44 @@ export default function ConfiguracoesPage() {
     setPixChargeType((business.pix_charge_type as "total" | "signal") ?? "total");
     setPixSignalPercent(business.pix_signal_percent ?? 30);
   }, [business]);
+
+  async function handleSaveLunch() {
+    if (!business) return;
+    if (lunchEnabled && (!lunchStart || !lunchEnd)) {
+      setLunchFeedback({ msg: "Informe os dois horários.", error: true });
+      return;
+    }
+    if (lunchEnabled && lunchStart >= lunchEnd) {
+      setLunchFeedback({ msg: "O início deve ser antes do fim.", error: true });
+      return;
+    }
+    setSavingLunch(true);
+    setLunchFeedback(null);
+    const { error } = await getSupabaseClient()
+      .from("businesses")
+      .update({
+        lunch_start: lunchEnabled ? lunchStart : null,
+        lunch_end:   lunchEnabled ? lunchEnd   : null,
+      })
+      .eq("id", business.id);
+    setSavingLunch(false);
+    if (!error) {
+      setLunchEditing(false);
+      setLunchFeedback({ msg: "Horário de almoço salvo!", error: false });
+    } else {
+      setLunchFeedback({ msg: "Erro ao salvar. Tente novamente.", error: true });
+    }
+    setTimeout(() => setLunchFeedback(null), 4000);
+  }
+
+  function handleCancelLunchEdit() {
+    if (!business) return;
+    setLunchEnabled(!!(business.lunch_start && business.lunch_end));
+    setLunchStart(business.lunch_start?.slice(0, 5) ?? "12:00");
+    setLunchEnd(business.lunch_end?.slice(0, 5)   ?? "13:00");
+    setLunchEditing(false);
+    setLunchFeedback(null);
+  }
 
   async function handleTogglePixEnabled() {
     if (!business || savingToggle) return;
@@ -532,22 +583,84 @@ export default function ConfiguracoesPage() {
         </SectionBody>
       </Section>
 
-      {(business.lunch_start && business.lunch_end) && (
-        <Section $delay={0.2}>
-          <SectionHeader>
-            <SectionIcon><ForkKnife size={16} weight="fill" /></SectionIcon>
-            <SectionTitle>Horário de Almoço</SectionTitle>
-          </SectionHeader>
-          <SectionBody>
+      <Section $delay={0.2}>
+        <SectionHeader>
+          <SectionIcon><ForkKnife size={16} weight="fill" /></SectionIcon>
+          <SectionTitle>Horário de Almoço</SectionTitle>
+          <SectionHeaderActions>
+            {!lunchEditing ? (
+              <EditBtn type="button" onClick={() => setLunchEditing(true)}>
+                <PencilSimple size={13} weight="bold" /> Editar
+              </EditBtn>
+            ) : (
+              <CancelBtn type="button" onClick={handleCancelLunchEdit}>
+                <X size={13} weight="bold" /> Cancelar
+              </CancelBtn>
+            )}
+          </SectionHeaderActions>
+        </SectionHeader>
+        <SectionBody>
+          {!lunchEditing ? (
             <Field>
-              <FieldLabel>Intervalo bloqueado automaticamente</FieldLabel>
+              <FieldLabel>Intervalo bloqueado para agendamentos</FieldLabel>
               <FieldValue>
-                {business.lunch_start.slice(0, 5)} – {business.lunch_end.slice(0, 5)}
+                {lunchEnabled
+                  ? `${lunchStart} – ${lunchEnd}`
+                  : <FieldEmpty>Sem horário de almoço configurado</FieldEmpty>
+                }
               </FieldValue>
             </Field>
-          </SectionBody>
-        </Section>
-      )}
+          ) : (
+            <>
+              <ToggleRow>
+                <ToggleLabel>
+                  <ToggleTitle>Bloquear horário de almoço</ToggleTitle>
+                  <ToggleSub>Os clientes não poderão agendar neste intervalo</ToggleSub>
+                </ToggleLabel>
+                <Toggle $on={lunchEnabled} type="button" onClick={() => setLunchEnabled((v) => !v)} />
+              </ToggleRow>
+
+              {lunchEnabled && (
+                <FieldGrid>
+                  <Field>
+                    <FieldLabel>Início</FieldLabel>
+                    <PixInput
+                      type="time"
+                      value={lunchStart}
+                      onChange={(e) => setLunchStart(e.target.value)}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel>Fim</FieldLabel>
+                    <PixInput
+                      type="time"
+                      value={lunchEnd}
+                      onChange={(e) => setLunchEnd(e.target.value)}
+                    />
+                  </Field>
+                </FieldGrid>
+              )}
+
+              <SaveBtn
+                type="button"
+                $loading={savingLunch}
+                disabled={savingLunch}
+                onClick={handleSaveLunch}
+                style={{ alignSelf: "flex-start" }}
+              >
+                {savingLunch
+                  ? <><SpinWrap><SpinnerIcon size={14} /></SpinWrap> Salvando…</>
+                  : <><FloppyDisk size={14} weight="bold" /> Salvar almoço</>
+                }
+              </SaveBtn>
+            </>
+          )}
+
+          {lunchFeedback && (
+            <SaveFeedback $error={lunchFeedback.error}>{lunchFeedback.msg}</SaveFeedback>
+          )}
+        </SectionBody>
+      </Section>
 
       {/* ── Seção PIX ───────────────────────────────────────────────────── */}
       <Section $delay={0.25}>

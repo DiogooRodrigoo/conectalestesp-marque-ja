@@ -94,12 +94,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "notes too long" }, { status: 400 });
     }
 
-    // C-02: source:admin só é aceito com sessão autenticada no painel
+    // C-04: source:admin requires an authenticated session AND ownership of business_id
     if (body.source === "admin") {
       const adminClient = await createServerSupabaseClient();
       const { data: { user }, error: authError } = await adminClient.auth.getUser();
       if (authError || !user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      const supabaseSR = createServerSupabaseClientWithServiceRole();
+      const { data: ownedBiz } = await supabaseSR
+        .from("businesses")
+        .select("id")
+        .eq("id", body.business_id)
+        .eq("owner_id", user.id)
+        .single();
+      if (!ownedBiz) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }
 
@@ -265,30 +275,6 @@ export async function POST(request: NextRequest) {
       professional = prof;
     }
 
-    // ── Verifica conflito de horário ──────────────────────────────────────────
-    {
-      const conflictQuery = supabase
-        .from("appointments")
-        .select("id")
-        .eq("business_id", body.business_id)
-        .in("status", ["confirmed", "pending", "awaiting_payment"])
-        .lt("start_at", endAt.toISOString())
-        .gt("end_at", startAt.toISOString());
-
-      if (body.professional_id) {
-        conflictQuery.eq("professional_id", body.professional_id);
-      }
-
-      const { data: conflicts } = await conflictQuery;
-
-      if (conflicts && conflicts.length > 0) {
-        return NextResponse.json(
-          { error: "This time slot is no longer available" },
-          { status: 409 }
-        );
-      }
-    }
-
     // Serviço primário = primeiro da lista (para o campo FK único da tabela)
     const primaryService = services.find(s => s.id === body.service_ids[0]) ?? services[0];
     const serviceNames = services.map((s) => s.name).join(" + ");
@@ -315,40 +301,64 @@ export async function POST(request: NextRequest) {
 
     const appointmentStatus = requiresPayment ? "awaiting_payment" : "confirmed";
 
-    const { data: appointment, error: insertError } = await supabase
-      .from("appointments")
-      .insert({
-        business_id: body.business_id,
-        service_id: primaryService.id,
-        professional_id: body.professional_id ?? null,
-        client_name: body.client_name,
-        client_phone: normalizedClientPhone,
-        start_at: startAt.toISOString(),
-        end_at: endAt.toISOString(),
-        status: appointmentStatus,
-        notes: body.notes ?? null,
-        reminder_sent: false,
-        confirmation_sent: false,
-        payment_required: requiresPayment,
-        payment_status: requiresPayment ? "awaiting" : null,
-        payment_amount_cents: requiresPayment ? pixAmountCents : null,
-      })
-      .select()
-      .single();
+    // ── C-01/A-02: Atomic conflict check + token marking + insert via DB function ─
+    // pg_advisory_xact_lock inside the function serializes concurrent requests for
+    // the same business, eliminating the check-then-insert race condition.
+    const { data: rpcResult, error: rpcError } = await supabase.rpc(
+      "book_appointment_atomic",
+      {
+        p_business_id:          body.business_id,
+        p_service_id:           primaryService.id,
+        p_professional_id:      body.professional_id ?? null,
+        p_client_name:          body.client_name,
+        p_client_phone:         normalizedClientPhone,
+        p_start_at:             startAt.toISOString(),
+        p_end_at:               endAt.toISOString(),
+        p_status:               appointmentStatus,
+        p_notes:                body.notes ?? null,
+        p_payment_required:     requiresPayment,
+        p_payment_status:       requiresPayment ? "awaiting" : null,
+        p_payment_amount_cents: requiresPayment ? pixAmountCents : null,
+        p_verification_id:      verification.id,
+      }
+    );
 
-    if (insertError || !appointment) {
-      console.error("[POST /api/bookings] Insert error:", insertError);
+    if (rpcError) {
+      console.error("[POST /api/bookings] RPC error:", rpcError);
+      return NextResponse.json({ error: "Failed to create appointment" }, { status: 500 });
+    }
+
+    const rpcData = rpcResult as { error?: string; id?: string; status?: string; start_at?: string; end_at?: string; professional_id?: string };
+
+    if (rpcData?.error === "slot_unavailable") {
       return NextResponse.json(
-        { error: "Failed to create appointment" },
-        { status: 500 }
+        { error: "This time slot is no longer available" },
+        { status: 409 }
       );
     }
 
-    // BUG-03: consome token apenas após insert bem-sucedido, evitando bloquear o cliente em caso de erro
-    await supabase
-      .from("phone_verifications")
-      .update({ token_used_at: new Date().toISOString() })
-      .eq("id", verification.id);
+    if (rpcData?.error === "token_already_used") {
+      return NextResponse.json(
+        { error: "Verificação de telefone inválida ou expirada. Reinicie o agendamento." },
+        { status: 401 }
+      );
+    }
+
+    if (rpcData?.error || !rpcData?.id) {
+      console.error("[POST /api/bookings] Unexpected RPC result:", rpcData);
+      return NextResponse.json({ error: "Failed to create appointment" }, { status: 500 });
+    }
+
+    const appointment = {
+      id:         rpcData.id,
+      status:     rpcData.status ?? appointmentStatus,
+      start_at:   rpcData.start_at ?? startAt.toISOString(),
+      end_at:     rpcData.end_at   ?? endAt.toISOString(),
+      client_name: body.client_name,
+      professional_id: rpcData.professional_id ?? null,
+    };
+
+    const resolvedProfessionalId = rpcData.professional_id ?? null;
 
     // ── Se requer pagamento PIX, retorna dados para o frontend prosseguir ──────
     if (requiresPayment) {

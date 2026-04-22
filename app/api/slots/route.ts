@@ -58,7 +58,8 @@ export async function GET(request: NextRequest) {
     }
 
     const maxDate = new Date();
-    const advanceDays = business.advance_booking_days ?? 30;
+    // M-07: advance_booking_days=0 would silently block all bookings; enforce minimum of 1
+    const advanceDays = Math.max(1, business.advance_booking_days ?? 30);
     maxDate.setDate(maxDate.getDate() + advanceDays);
     if (requestedDate > maxDate) {
       return NextResponse.json(
@@ -84,19 +85,14 @@ export async function GET(request: NextRequest) {
     const dayStart = `${date}T00:00:00-03:00`;
     const dayEnd = `${date}T23:59:59.999-03:00`;
 
-    let appointmentsQuery = supabase
+    // Fetch ALL appointments for the day (all professionals) — needed for multi-professional union
+    const { data: appointments, error: apptError } = await supabase
       .from("appointments")
       .select("start_at, end_at, professional_id")
       .eq("business_id", business_id)
       .gte("start_at", dayStart)
       .lte("start_at", dayEnd)
       .in("status", ["confirmed", "pending", "awaiting_payment"]);
-
-    if (professional_id) {
-      appointmentsQuery = appointmentsQuery.eq("professional_id", professional_id);
-    }
-
-    const { data: appointments, error: apptError } = await appointmentsQuery;
 
     if (apptError) {
       return NextResponse.json(
@@ -105,14 +101,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let blockedQuery = supabase
+    const { data: blockedSlots, error: blockedError } = await supabase
       .from("blocked_slots")
       .select("start_at, end_at, professional_id")
       .eq("business_id", business_id)
       .gte("start_at", dayStart)
       .lte("start_at", dayEnd);
-
-    const { data: blockedSlots, error: blockedError } = await blockedQuery;
 
     if (blockedError) {
       return NextResponse.json(
@@ -121,32 +115,82 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const slots = getAvailableSlots({
-      date,
-      businessHours: businessHours.map((h) => ({
-        day_of_week: h.day_of_week,
-        is_open: h.is_open ?? false,
-        open_time: h.open_time,
-        close_time: h.close_time,
-      })),
-      appointments: (appointments || []).map((a) => ({
-        start_at: a.start_at,
-        end_at: a.end_at,
-        professional_id: a.professional_id ?? "",
-      })),
-      blockedSlots: (blockedSlots || []).map((b) => ({
-        start_at: b.start_at,
-        end_at: b.end_at,
-        professional_id: b.professional_id,
-      })),
-      slotDuration: business.slot_duration ?? 30,
-      requestedDuration: requestedDuration && !isNaN(requestedDuration) ? requestedDuration : undefined,
-      professionalId: professional_id ?? undefined,
-      lunchBreak:
-        business.lunch_start && business.lunch_end
-          ? { start: business.lunch_start, end: business.lunch_end }
-          : undefined,
-    });
+    const mappedHours = businessHours.map((h) => ({
+      day_of_week: h.day_of_week,
+      is_open: h.is_open ?? false,
+      open_time: h.open_time,
+      close_time: h.close_time,
+    }));
+    const mappedAppointments = (appointments || []).map((a) => ({
+      start_at: a.start_at,
+      end_at: a.end_at,
+      professional_id: a.professional_id ?? "",
+    }));
+    const mappedBlocked = (blockedSlots || []).map((b) => ({
+      start_at: b.start_at,
+      end_at: b.end_at,
+      professional_id: b.professional_id,
+    }));
+    const slotDuration = business.slot_duration ?? 30;
+    const reqDuration = requestedDuration && !isNaN(requestedDuration) ? requestedDuration : undefined;
+    const lunchBreak =
+      business.lunch_start && business.lunch_end
+        ? { start: business.lunch_start, end: business.lunch_end }
+        : undefined;
+
+    let slots: string[];
+
+    if (!professional_id) {
+      // "Qualquer disponível": fetch active professionals and union their available slots
+      const { data: professionals } = await supabase
+        .from("professionals")
+        .select("id")
+        .eq("business_id", business_id)
+        .eq("is_active", true);
+
+      const profIds = (professionals ?? []).map((p: { id: string }) => p.id);
+
+      if (profIds.length > 0) {
+        // A slot is available if at least one professional is free → union of per-professional slots
+        const slotSet = new Set<string>();
+        for (const profId of profIds) {
+          const profSlots = getAvailableSlots({
+            date,
+            businessHours: mappedHours,
+            appointments: mappedAppointments,
+            blockedSlots: mappedBlocked,
+            slotDuration,
+            requestedDuration: reqDuration,
+            professionalId: profId,
+            lunchBreak,
+          });
+          for (const s of profSlots) slotSet.add(s);
+        }
+        slots = Array.from(slotSet).sort();
+      } else {
+        // No professionals configured — treat as single-resource business
+        slots = getAvailableSlots({
+          date,
+          businessHours: mappedHours,
+          appointments: mappedAppointments,
+          blockedSlots: mappedBlocked,
+          slotDuration,
+          requestedDuration: reqDuration,
+          lunchBreak,
+        });
+      }
+    } else {
+      slots = getAvailableSlots({
+        date,
+        businessHours: mappedHours,
+        appointments: mappedAppointments,
+        blockedSlots: mappedBlocked,
+        slotDuration,
+        requestedDuration: reqDuration,
+        professionalId: professional_id,
+        lunchBreak,
+      });
+    }
 
     return NextResponse.json({
       date,

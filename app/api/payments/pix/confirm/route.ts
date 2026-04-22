@@ -76,6 +76,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Erro ao confirmar pagamento" }, { status: 500 });
     }
 
+    // A-06: Audit trail for payment confirmation
+    await supabase.from("appointment_audit_log").insert({
+      appointment_id,
+      changed_by: user.id,
+      old_status: appointment.status,
+      new_status: "confirmed",
+      note: "PIX payment confirmed manually by admin",
+    });
+
     // Notifica o cliente via WhatsApp
     const businessName = business?.name ?? "Estabelecimento";
     const startDt = new Date(appointment.start_at);

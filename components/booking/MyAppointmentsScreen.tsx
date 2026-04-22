@@ -343,10 +343,11 @@ function statusLabel(status: string, paymentStatus?: string | null): string {
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);
+  const tz = "America/Sao_Paulo";
   return {
-    date: d.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }),
-    time: d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-    dateShort: d.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" }),
+    date:      d.toLocaleDateString("pt-BR",  { timeZone: tz, weekday: "long",  day: "numeric", month: "long"  }),
+    time:      d.toLocaleTimeString("pt-BR",  { timeZone: tz, hour: "2-digit",  minute: "2-digit" }),
+    dateShort: d.toLocaleDateString("pt-BR",  { timeZone: tz, weekday: "short", day: "numeric", month: "short" }),
   };
 }
 

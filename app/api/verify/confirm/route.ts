@@ -19,6 +19,23 @@ export async function POST(request: NextRequest) {
     const cleanPhone = stripPhone(phone);
     const supabase = createServerSupabaseClientWithServiceRole();
 
+    // A-01: Global brute-force protection — max 10 attempts per phone in 10 min
+    // regardless of how many OTP codes were issued or for how many businesses.
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: recentRows } = await supabase
+      .from("phone_verifications")
+      .select("attempts")
+      .eq("phone", cleanPhone)
+      .gte("created_at", tenMinutesAgo);
+
+    const totalAttempts = (recentRows ?? []).reduce((sum, v) => sum + (v.attempts ?? 0), 0);
+    if (totalAttempts >= 10) {
+      return NextResponse.json(
+        { error: "Muitas tentativas. Tente novamente em 10 minutos." },
+        { status: 429 }
+      );
+    }
+
     // Busca verificação mais recente não expirada e não usada para este telefone
     const { data: verification, error } = await supabase
       .from("phone_verifications")

@@ -12,6 +12,7 @@ import {
   Spinner,
 } from "@phosphor-icons/react";
 import { formatPrice } from "@/lib/utils/formatters";
+import { fetchWithRetry } from "@/lib/utils/fetchWithRetry";
 
 interface Props {
   appointmentId: string;
@@ -353,10 +354,9 @@ export default function StepPayment({
     setLoadingQr(true);
     setQrError(null);
     try {
-      const res = await fetch("/api/payments/pix/create", {
+      const res = await fetchWithRetry("/api/payments/pix/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // BUG-01: business_id is required; amount comes from DB (C-01), but we still send it for display only
         body: JSON.stringify({
           appointment_id: appointmentId,
           business_id: businessId,
@@ -366,7 +366,12 @@ export default function StepPayment({
       if (!res.ok) throw new Error(data.error ?? "Erro ao gerar PIX");
       setQrCode(data.qr_code);
       setQrCodeText(data.qr_code_text);
-      setPaymentId(data.payment_id); // A-05: guarda para autenticar polling
+      setPaymentId(data.payment_id);
+      // A-04: sync timer with actual backend expiry, not a hardcoded constant
+      if (data.expires_at) {
+        const remaining = Math.floor((new Date(data.expires_at).getTime() - Date.now()) / 1000);
+        setTimeLeft(Math.max(0, remaining));
+      }
     } catch (err) {
       setQrError(err instanceof Error ? err.message : "Erro ao gerar PIX");
     } finally {

@@ -56,6 +56,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Erro ao cancelar agendamento" }, { status: 500 });
     }
 
+    // A-06: Audit trail for cancellation
+    await supabase.from("appointment_audit_log").insert({
+      appointment_id,
+      changed_by: user.id,
+      old_status: appointment.status,
+      new_status: "cancelled",
+      note: reason?.trim() ? `Admin cancelled: ${reason.trim()}` : "Admin cancelled",
+    });
+
     // Notifica o cliente via WhatsApp
     if (appointment.client_phone) {
       const SP = "America/Sao_Paulo";

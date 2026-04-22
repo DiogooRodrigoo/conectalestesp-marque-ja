@@ -63,11 +63,33 @@ const LoadingGrid = styled.div`
   gap: 8px;
 `;
 
-const SkeletonChip = styled.div`
+const SkeletonChip = styled.div<{ $delay?: string }>`
   height: 44px;
   border-radius: 10px;
   background: var(--color-surface-2);
+  animation: ${pulse} 1.5s ease ${({ $delay }) => $delay ?? "0s"} infinite;
+`;
+
+const SkeletonPeriodHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  margin-bottom: 10px;
+`;
+
+const SkeletonPill = styled.div`
+  height: 24px;
+  width: 80px;
+  border-radius: 99px;
+  background: var(--color-surface-2);
   animation: ${pulse} 1.5s ease infinite;
+`;
+
+const SkeletonLine = styled.div`
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
 `;
 
 // ── Pill-style section header ─────────────────────────────────────────────────
@@ -356,11 +378,26 @@ export default function StepTimePicker({
       <Subtitle style={{ textTransform: "capitalize" }}>{formattedDate}</Subtitle>
 
       {loading && (
-        <LoadingGrid>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <SkeletonChip key={i} />
-          ))}
-        </LoadingGrid>
+        <>
+          <SkeletonPeriodHeader>
+            <SkeletonPill />
+            <SkeletonLine />
+          </SkeletonPeriodHeader>
+          <LoadingGrid>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonChip key={i} $delay={`${i * 0.08}s`} />
+            ))}
+          </LoadingGrid>
+          <SkeletonPeriodHeader>
+            <SkeletonPill style={{ width: 64 }} />
+            <SkeletonLine />
+          </SkeletonPeriodHeader>
+          <LoadingGrid>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <SkeletonChip key={i} $delay={`${(i + 6) * 0.08}s`} />
+            ))}
+          </LoadingGrid>
+        </>
       )}
 
       {!loading && error && (

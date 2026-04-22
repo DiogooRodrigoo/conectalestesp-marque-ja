@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
       `(${cleanPhone.slice(0, 2)}) ${cleanPhone.slice(2, 6)}-${cleanPhone.slice(6)}`, // (11) 9999-9999 (fixo)
     ];
 
+    // M-02: `notes` omitted — it may contain internal admin observations (LGPD risk)
     const { data: appointments, error } = await supabase
       .from("appointments")
       .select(`
@@ -55,7 +56,6 @@ export async function GET(request: NextRequest) {
         start_at,
         end_at,
         status,
-        notes,
         payment_status,
         payment_amount_cents,
         payment_expires_at,

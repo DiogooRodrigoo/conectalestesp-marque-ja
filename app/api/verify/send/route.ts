@@ -33,13 +33,13 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServerSupabaseClientWithServiceRole();
 
-    // Rate limit: máximo 1 envio por minuto por telefone+negócio
+    // C-03: Rate limit per phone globally (not per phone+business) to prevent
+    // flood across multiple business_ids for the same number.
     const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
     const { data: recent } = await supabase
       .from("phone_verifications")
       .select("id")
       .eq("phone", cleanPhone)
-      .eq("business_id", business_id)
       .gte("created_at", oneMinuteAgo)
       .limit(1);
 
