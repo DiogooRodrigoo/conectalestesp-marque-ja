@@ -163,8 +163,6 @@ export default function StepProfessionalSelect({
 }: Props) {
   const active = professionals.filter((p) => p.is_active);
 
-  const anySelected = selectedId === null;
-
   return (
     <Container>
       <BackButton onClick={onBack} type="button">
@@ -175,23 +173,6 @@ export default function StepProfessionalSelect({
       <Subtitle>Selecione com quem deseja ser atendido</Subtitle>
 
       <ProfessionalList>
-        {/* "Qualquer disponível" card */}
-        <ProfCard
-          key="any"
-          $selected={anySelected}
-          onClick={() => onSelect(null)}
-          type="button"
-        >
-          <AvatarCircle $any>✦</AvatarCircle>
-          <ProfInfo>
-            <ProfName>Qualquer disponível</ProfName>
-            <ProfBio>Primeiro profissional livre no horário</ProfBio>
-          </ProfInfo>
-          {anySelected && (
-            <CheckBadge><CheckCircle size={20} weight="fill" /></CheckBadge>
-          )}
-        </ProfCard>
-
         {/* Individual professional cards */}
         {active.map((prof) => {
           const isSelected = selectedId === prof.id;

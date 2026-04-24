@@ -622,6 +622,7 @@ export default function AgendaPage() {
   const [cancelAptId, setCancelAptId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
+  const [confirmingPixId, setConfirmingPixId] = useState<string | null>(null);
 
   // New appointment modal
   const [newAptOpen, setNewAptOpen] = useState(false);
@@ -708,6 +709,8 @@ export default function AgendaPage() {
   }
 
   async function confirmPixPayment(aptId: string) {
+    if (confirmingPixId === aptId) return; // guard contra double-click
+    setConfirmingPixId(aptId);
     try {
       const res = await fetch("/api/payments/pix/confirm", {
         method: "POST",
@@ -719,20 +722,21 @@ export default function AgendaPage() {
         console.error("[confirmPixPayment] error:", data.error);
         return;
       }
+      setAppointments((prev) =>
+        prev.map((a) =>
+          a.id === aptId
+            ? { ...a, status: "confirmed" as AptStatus, payment_status: "paid" }
+            : a
+        )
+      );
+      setDetailApt((prev) =>
+        prev?.id === aptId ? { ...prev, status: "confirmed" as AptStatus, payment_status: "paid" } : prev
+      );
     } catch (err) {
       console.error("[confirmPixPayment] fetch error:", err);
-      return;
+    } finally {
+      setConfirmingPixId(null);
     }
-    setAppointments((prev) =>
-      prev.map((a) =>
-        a.id === aptId
-          ? { ...a, status: "confirmed" as AptStatus, payment_status: "paid" }
-          : a
-      )
-    );
-    setDetailApt((prev) =>
-      prev?.id === aptId ? { ...prev, status: "confirmed" as AptStatus, payment_status: "paid" } : prev
-    );
   }
 
   async function cancelAppointment(aptId: string, reason: string) {
@@ -764,8 +768,21 @@ export default function AgendaPage() {
     setCancelReason("");
   }
 
+  const ALLOWED_TRANSITIONS: Partial<Record<AptStatus, AptStatus[]>> = {
+    "pending":          ["confirmed", "completed", "no_show"],
+    "confirmed":        ["completed", "no_show", "pending"],
+    "awaiting_payment": ["confirmed"],
+    "completed":        ["no_show"],
+    "no_show":          ["confirmed", "completed"],
+  };
+
   async function changeStatus(aptId: string, newStatus: AptStatus) {
     const current = appointments.find((a) => a.id === aptId);
+    const allowed = ALLOWED_TRANSITIONS[current?.status as AptStatus] ?? [];
+    if (!allowed.includes(newStatus)) {
+      console.warn(`[changeStatus] transição inválida: ${current?.status} → ${newStatus}`);
+      return;
+    }
     const isPixConfirm = newStatus === "confirmed" && current?.status === "awaiting_payment";
 
     const updatePayload: Record<string, unknown> = { status: newStatus };
@@ -802,6 +819,28 @@ export default function AgendaPage() {
     const selectedService = services.find((s) => s.id === newAptForm.serviceId);
     const durationMin = selectedService?.duration_min ?? 30;
     const endAt = new Date(startAt.getTime() + durationMin * 60_000);
+
+    // Verifica conflito de horário antes de inserir
+    {
+      let conflictQuery = supabase
+        .from("appointments")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", business.id)
+        .in("status", ["confirmed", "pending", "awaiting_payment"])
+        .lt("start_at", endAt.toISOString())
+        .gt("end_at", startAt.toISOString());
+
+      if (newAptForm.professionalId) {
+        conflictQuery = conflictQuery.eq("professional_id", newAptForm.professionalId) as typeof conflictQuery;
+      }
+
+      const { count } = await conflictQuery;
+      if (count && count > 0) {
+        alert("Conflito de horário: já existe um agendamento neste período para este profissional.");
+        setSaving(false);
+        return;
+      }
+    }
 
     // BUG-06: handle Supabase errors
     const { data, error: insertError } = await supabase
@@ -950,8 +989,10 @@ export default function AgendaPage() {
                       type="button"
                       onClick={(e) => { e.stopPropagation(); confirmPixPayment(apt.id); }}
                       title="Confirmar recebimento do PIX"
+                      disabled={confirmingPixId === apt.id}
+                      style={confirmingPixId === apt.id ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
                     >
-                      ✓ PIX
+                      {confirmingPixId === apt.id ? "..." : "✓ PIX"}
                     </PixConfirmBtn>
                   ) : (
                     <StatusBtn

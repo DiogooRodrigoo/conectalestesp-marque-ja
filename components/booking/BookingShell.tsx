@@ -597,7 +597,7 @@ function DesktopStepList({
     {
       label: "Profissional",
       detail: step > 2
-        ? (booking.professionalId ? selProfessional?.name : "Qualquer disponível") ?? undefined
+        ? selProfessional?.name ?? undefined
         : undefined,
     },
     { label: "Data", detail: booking.date ? formatDateShort(booking.date) : undefined },

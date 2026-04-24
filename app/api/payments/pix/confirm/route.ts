@@ -60,8 +60,8 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
 
-    // Confirma o pagamento
-    const { error: updateError } = await supabase
+    // UPDATE atômico: só avança se ainda não estiver pago (guard contra double-click/race)
+    const { data: updated, error: updateError } = await supabase
       .from("appointments")
       .update({
         payment_status: "paid",
@@ -69,14 +69,22 @@ export async function POST(request: NextRequest) {
         status: "confirmed",
         confirmation_sent: false,
       })
-      .eq("id", appointment_id);
+      .eq("id", appointment_id)
+      .neq("payment_status", "paid")  // somente uma requisição vence a corrida
+      .select("id")
+      .maybeSingle();
 
     if (updateError) {
       console.error("[pix/confirm] update error:", updateError);
       return NextResponse.json({ error: "Erro ao confirmar pagamento" }, { status: 500 });
     }
 
-    // A-06: Audit trail for payment confirmation
+    // Se nenhuma linha foi atualizada, outra requisição ganhou a corrida — idempotente
+    if (!updated) {
+      return NextResponse.json({ success: true, already_paid: true });
+    }
+
+    // A-06: Audit trail — executado uma única vez por ser pós-guard
     await supabase.from("appointment_audit_log").insert({
       appointment_id,
       changed_by: user.id,

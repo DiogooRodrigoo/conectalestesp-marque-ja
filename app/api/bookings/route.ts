@@ -120,6 +120,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Garante que a data é calendicamente válida (ex: rejeita 2025-13-45)
+    if (isNaN(new Date(body.date + "T12:00:00").getTime())) {
+      return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+    }
+
     if (!/^\d{2}:\d{2}$/.test(body.time)) {
       return NextResponse.json(
         { error: "time must be in HH:MM format" },
@@ -131,6 +136,11 @@ export async function POST(request: NextRequest) {
 
     // ── Valida token de verificação de telefone ───────────────────────────────
     const cleanPhone = body.client_phone.replace(/\D/g, "");
+
+    // Telefone brasileiro: 10 dígitos (fixo) ou 11 dígitos (celular com 9)
+    if (cleanPhone.length < 10 || cleanPhone.length > 11) {
+      return NextResponse.json({ error: "Número de telefone inválido" }, { status: 400 });
+    }
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
 
     const { data: verification } = await supabase

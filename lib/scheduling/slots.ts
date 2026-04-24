@@ -12,7 +12,7 @@ export interface BusinessHoursEntry {
 export interface ExistingAppointment {
   start_at: string; // ISO timestamp
   end_at: string;   // ISO timestamp
-  professional_id: string;
+  professional_id: string | null; // null = sem profissional definido → bloqueia todos
 }
 
 export interface BlockedSlotEntry {
@@ -155,11 +155,16 @@ export function getAvailableSlots(params: GetAvailableSlotsParams): string[] {
     candidates.push(t);
   }
 
-  // Build list of blocked ranges (in minutes) from appointments
+  // Build list of blocked ranges (in minutes) from appointments.
+  // professional_id === null means the admin created the appointment without assigning
+  // a specific professional → treat as business-wide block (affects all professionals),
+  // mirroring the same logic used for blocked_slots.
   const appointmentRanges = appointments
     .filter(
       (apt) =>
-        !professionalId || apt.professional_id === professionalId
+        apt.professional_id === null ||
+        !professionalId ||
+        apt.professional_id === professionalId
     )
     .map((apt) => isoRangeToMinutes(apt.start_at, apt.end_at, date))
     .filter((r): r is { start: number; end: number } => r !== null);

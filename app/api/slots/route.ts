@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
     const mappedAppointments = (appointments || []).map((a) => ({
       start_at: a.start_at,
       end_at: a.end_at,
-      professional_id: a.professional_id ?? "",
+      professional_id: a.professional_id ?? null,
     }));
     const mappedBlocked = (blockedSlots || []).map((b) => ({
       start_at: b.start_at,
