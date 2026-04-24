@@ -314,7 +314,7 @@ function formatTimer(seconds: number): string {
 }
 
 const PIX_DURATION_SECONDS = 30 * 60; // 30 minutos
-const POLLING_INTERVAL_MS = 5000;
+const POLLING_INTERVAL_MS = 2000;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -339,6 +339,7 @@ export default function StepPayment({
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // BUG-04
+  const pollErrorCountRef = useRef(0);
 
   // BUG-04: cleanup all timers on unmount
   useEffect(() => {
@@ -385,6 +386,7 @@ export default function StepPayment({
     try {
       const res = await fetch(`/api/payments/pix/status?appointment_id=${appointmentId}&payment_id=${paymentId}`);
       const data = await res.json();
+      pollErrorCountRef.current = 0;
       if (data.status === "paid") {
         setPaymentStatus("paid");
         clearInterval(pollingRef.current!);
@@ -395,8 +397,11 @@ export default function StepPayment({
         clearInterval(pollingRef.current!);
         clearInterval(timerRef.current!);
       }
-    } catch {
-      // polling silencioso
+    } catch (err) {
+      pollErrorCountRef.current += 1;
+      if (pollErrorCountRef.current >= 5) {
+        console.error("[StepPayment] polling falhou 5x consecutivas:", err);
+      }
     }
   }, [appointmentId, paymentId, onSuccess]);
 

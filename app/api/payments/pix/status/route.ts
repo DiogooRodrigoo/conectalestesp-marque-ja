@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClientWithServiceRole } from "@/lib/supabase/server";
 
+// Impede o Next.js de cachear esta rota GET no Full Route Cache / Data Cache.
+// Sem isso, o framework pode servir uma resposta "awaiting" em cache mesmo após
+// o DB ter sido atualizado para "paid".
+export const dynamic = "force-dynamic";
+
 // M-05: The in-memory rate limit map was reset on every cold start (serverless).
 // Removed: the appointment+payment_id ownership check already acts as a guard,
 // and the DB query is indexed. Add Upstash/Redis rate limiting here if needed.
@@ -32,16 +37,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
     }
 
+    const NO_CACHE = { headers: { "Cache-Control": "no-store, no-cache" } };
+
     // Considera pago se payment_status = "paid" OU se o status foi confirmado manualmente pelo painel
     if (appointment.payment_status === "paid" || appointment.status === "confirmed") {
       return NextResponse.json({
         status: "paid",
         paid_at: appointment.payment_paid_at,
-      });
+      }, NO_CACHE);
     }
 
     if (appointment.payment_status === "expired") {
-      return NextResponse.json({ status: "expired" });
+      return NextResponse.json({ status: "expired" }, NO_CACHE);
     }
 
     if (appointment.payment_expires_at) {
@@ -52,14 +59,11 @@ export async function GET(request: NextRequest) {
           .update({ payment_status: "expired", status: "cancelled" })
           .eq("id", appointmentId);
 
-        return NextResponse.json({ status: "expired" });
+        return NextResponse.json({ status: "expired" }, NO_CACHE);
       }
     }
 
-    return NextResponse.json(
-      { status: "awaiting" },
-      { headers: { "Cache-Control": "no-store" } }
-    );
+    return NextResponse.json({ status: "awaiting" }, NO_CACHE);
   } catch (err) {
     console.error("[GET /api/payments/pix/status]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
