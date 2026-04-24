@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createServerSupabaseClient, createServerSupabaseClientWithServiceRole } from "@/lib/supabase/server";
 import { getAvailableSlots } from "@/lib/scheduling/slots";
 
 export async function GET(request: NextRequest) {
@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = await createServerSupabaseClient();
+    const supabaseSR = createServerSupabaseClientWithServiceRole();
 
     const { data: business, error: businessError } = await supabase
       .from("businesses")
@@ -85,8 +86,10 @@ export async function GET(request: NextRequest) {
     const dayStart = `${date}T00:00:00-03:00`;
     const dayEnd = `${date}T23:59:59.999-03:00`;
 
-    // Fetch ALL appointments for the day (all professionals) — needed for multi-professional union
-    const { data: appointments, error: apptError } = await supabase
+    // Fetch ALL appointments for the day (all professionals) — needed for multi-professional union.
+    // Must use service role: the anon key has no SELECT policy on appointments (removed in migration 010
+    // for security), so an anon query silently returns [] and all slots appear free.
+    const { data: appointments, error: apptError } = await supabaseSR
       .from("appointments")
       .select("start_at, end_at, professional_id")
       .eq("business_id", business_id)
@@ -101,7 +104,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { data: blockedSlots, error: blockedError } = await supabase
+    const { data: blockedSlots, error: blockedError } = await supabaseSR
       .from("blocked_slots")
       .select("start_at, end_at, professional_id")
       .eq("business_id", business_id)
@@ -142,7 +145,7 @@ export async function GET(request: NextRequest) {
 
     if (!professional_id) {
       // "Qualquer disponível": fetch active professionals and union their available slots
-      const { data: professionals } = await supabase
+      const { data: professionals } = await supabaseSR
         .from("professionals")
         .select("id")
         .eq("business_id", business_id)
